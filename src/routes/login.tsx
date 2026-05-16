@@ -84,8 +84,9 @@ function LoginPage() {
             <Input
               id="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
               required
+              minLength={mode === "signup" ? 6 : undefined}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -95,11 +96,27 @@ function LoginPage() {
               {error}
             </p>
           )}
+          {info && (
+            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              {info}
+            </p>
+          )}
           <Button type="submit" className="w-full" disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-            Sign in
+            {mode === "signin" ? "Sign in" : "Create account"}
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          {mode === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
+          <button
+            type="button"
+            onClick={switchMode}
+            className="font-medium text-blue-600 hover:underline"
+          >
+            {mode === "signin" ? "Sign up" : "Sign in"}
+          </button>
+        </p>
       </div>
     </div>
   );
