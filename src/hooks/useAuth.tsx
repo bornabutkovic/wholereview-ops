@@ -40,6 +40,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error };
     },
+    signUp: async (email, password) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/` },
+      });
+      if (error) return { error, needsConfirmation: false };
+
+      const userId = data.user?.id;
+      if (userId) {
+        // Best-effort role assignment. May fail silently if email confirmation
+        // is required (no session yet) and RLS blocks the insert.
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: userId, role: "staff" });
+        if (roleError) {
+          console.warn("Could not assign staff role:", roleError.message);
+        }
+      }
+
+      return { error: null, needsConfirmation: !data.session };
+    },
     signOut: async () => {
       await supabase.auth.signOut();
     },
