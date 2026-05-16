@@ -26,7 +26,7 @@ export async function resolveReviewItem(params: {
   note: string;
   userEmail: string | null;
 }): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("review_queue")
     .update({
       status: params.status,
@@ -34,6 +34,12 @@ export async function resolveReviewItem(params: {
       resolved_at: new Date().toISOString(),
       resolved_by: params.userEmail,
     })
-    .eq("id", params.id);
+    .eq("id", params.id)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      "Update returned 0 rows — likely missing RLS UPDATE policy on review_queue.",
+    );
+  }
 }
