@@ -11,11 +11,13 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -25,11 +27,31 @@ function LoginPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     setSubmitting(true);
-    const { error } = await signIn(email, password);
-    setSubmitting(false);
-    if (error) setError(error.message);
-    else navigate({ to: "/" });
+    if (mode === "signin") {
+      const { error } = await signIn(email, password);
+      setSubmitting(false);
+      if (error) setError(error.message);
+      else navigate({ to: "/" });
+    } else {
+      const { error, needsConfirmation } = await signUp(email, password);
+      setSubmitting(false);
+      if (error) {
+        setError(error.message);
+      } else if (needsConfirmation) {
+        setInfo("Check your email to confirm your account before signing in.");
+        setMode("signin");
+      } else {
+        navigate({ to: "/" });
+      }
+    }
+  };
+
+  const switchMode = () => {
+    setMode((m) => (m === "signin" ? "signup" : "signin"));
+    setError(null);
+    setInfo(null);
   };
 
   return (
