@@ -2,12 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { listReviewItems, resolveReviewItem } from "@/lib/review-queue";
-import type { ProductMatchPayload, ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
-import { useConfirmProductMapping, useNpSkuDetails } from "@/lib/product-mapping";
+import type { NpSkuDetails, Partner, ProductMatchPayload, ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
+import {
+  useAssignPartner,
+  useConfirmMapping,
+  useNpSkuList,
+  usePartners,
+  useRejectMapping,
+} from "@/lib/product-mapping";
 import { useAuth } from "@/hooks/useAuth";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +51,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/review-queue")({
   component: ReviewQueuePage,
