@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Search, AlertCircle, Inbox } from "lucide-react";
+import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { listReviewItems, resolveReviewItem } from "@/lib/review-queue";
-import type { ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
+import type { ProductMatchPayload, ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
+import { useConfirmProductMapping, useNpSkuDetails } from "@/lib/product-mapping";
 import { useAuth } from "@/hooks/useAuth";
 
 import { Button } from "@/components/ui/button";
