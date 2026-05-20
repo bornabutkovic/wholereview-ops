@@ -50,3 +50,9 @@ export interface NpSkuDetails {
   brand: string | null;
   inn: string | null;
 }
+
+export interface Partner {
+  partner_id: string;
+  code: string;
+  contact_email: string | null;
+}
