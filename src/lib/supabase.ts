@@ -28,9 +28,25 @@ export interface ReviewItem {
   description: string | null;
   status: ReviewStatus;
   payload: unknown;
+  suggested_value: string | null;
   resolution_note: string | null;
   resolved_at: string | null;
   resolved_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProductMatchPayload {
+  raw_product_ref?: string | null;
+  raw_code?: string | null;
+  match_source?: string | null;
+  mapping_confidence?: number | null;
+  match_reason?: string | null;
+}
+
+export interface NpSkuDetails {
+  np_sku_id: string;
+  pack_description: string | null;
+  brand: string | null;
+  inn: string | null;
 }
