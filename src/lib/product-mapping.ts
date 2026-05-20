@@ -13,11 +13,18 @@ export function useNpSkuDetails(npSkuId: string | null | undefined) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      const product = (data as { np_product: { brand: string | null; inn: string | null } | null })
-        .np_product;
+      const row = data as unknown as {
+        np_sku_id: string;
+        pack_description: string | null;
+        np_product:
+          | { brand: string | null; inn: string | null }
+          | { brand: string | null; inn: string | null }[]
+          | null;
+      };
+      const product = Array.isArray(row.np_product) ? row.np_product[0] : row.np_product;
       return {
-        np_sku_id: (data as { np_sku_id: string }).np_sku_id,
-        pack_description: (data as { pack_description: string | null }).pack_description,
+        np_sku_id: row.np_sku_id,
+        pack_description: row.pack_description,
         brand: product?.brand ?? null,
         inn: product?.inn ?? null,
       };
