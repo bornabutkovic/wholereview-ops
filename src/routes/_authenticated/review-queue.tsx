@@ -241,7 +241,9 @@ function ReviewQueuePage() {
             setActive(null);
           }}
           userEmail={user?.email ?? null}
+          userId={user?.id ?? null}
         />
+
       </div>
     </TooltipProvider>
   );
