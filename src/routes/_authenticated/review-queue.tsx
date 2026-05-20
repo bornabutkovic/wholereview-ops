@@ -321,8 +321,9 @@ function ResolveDialog({
   userEmail: string | null;
   userId: string | null;
 }) {
-  const isProductMatch = item?.category === "PRODUCT_MATCH";
   const readOnly = item?.status !== "OPEN";
+  const isProductMatch = item?.category === "PRODUCT_MATCH" && !readOnly;
+  const isPartnerUnknown = item?.category === "PARTNER_UNKNOWN" && !readOnly;
 
   return (
     <Dialog
@@ -332,7 +333,7 @@ function ResolveDialog({
       }}
     >
       <DialogContent
-        className={isProductMatch && !readOnly ? "sm:max-w-[720px]" : "sm:max-w-[480px]"}
+        className={isProductMatch ? "sm:max-w-[760px]" : "sm:max-w-[520px]"}
       >
         <DialogHeader>
           <DialogTitle className="text-base">
@@ -343,11 +344,17 @@ function ResolveDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {item && isProductMatch && !readOnly ? (
+        {item && isProductMatch ? (
           <ProductMatchBody
             item={item}
             userEmail={userEmail}
             userId={userId}
+            onResolved={onResolved}
+          />
+        ) : item && isPartnerUnknown ? (
+          <PartnerUnknownBody
+            item={item}
+            userEmail={userEmail}
             onResolved={onResolved}
           />
         ) : item ? (
@@ -362,6 +369,10 @@ function ResolveDialog({
     </Dialog>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Generic fallback body
+// ---------------------------------------------------------------------------
 
 function GenericBody({
   item,
@@ -450,6 +461,203 @@ function GenericBody({
   );
 }
 
+// ---------------------------------------------------------------------------
+// PARTNER_UNKNOWN
+// ---------------------------------------------------------------------------
+
+function PartnerUnknownBody({
+  item,
+  userEmail,
+  onResolved,
+}: {
+  item: ReviewItem;
+  userEmail: string | null;
+  onResolved: () => void;
+}) {
+  const partners = usePartners();
+  const assign = useAssignPartner();
+  const [partnerId, setPartnerId] = useState<string | null>(null);
+  const unknownEmail = extractEmail(item.description ?? "") ?? "";
+  const [email, setEmail] = useState(unknownEmail);
+
+  const dismiss = useMutation({
+    mutationFn: () =>
+      resolveReviewItem({
+        id: item.id,
+        status: "DISMISSED",
+        note: "Dismissed (no partner assigned)",
+        userEmail,
+      }),
+    onSuccess: () => {
+      toast.success("Dismissed");
+      onResolved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const selectedPartner = partners.data?.find((p) => p.partner_id === partnerId) ?? null;
+
+  const handleSave = async () => {
+    if (!selectedPartner) {
+      toast.error("Select a partner first");
+      return;
+    }
+    try {
+      await assign.mutateAsync({
+        partnerId: selectedPartner.partner_id,
+        partnerCode: selectedPartner.code,
+        email,
+        currentEmail: selectedPartner.contact_email,
+        reviewItemId: item.id,
+        userEmail,
+      });
+      toast.success(`Assigned to ${selectedPartner.code}`);
+      onResolved();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  return (
+    <>
+      <div className="space-y-3">
+        <div className="rounded-md border bg-muted/20 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Unknown sender
+          </p>
+          <p className="mt-1 text-sm font-mono text-foreground">
+            {unknownEmail || item.description || "—"}
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Assign to partner</Label>
+          <PartnerCombobox
+            partners={partners.data ?? []}
+            loading={partners.isLoading}
+            value={partnerId}
+            onChange={setPartnerId}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="partner-email" className="text-xs">
+            Add email to this partner
+          </Label>
+          <Input
+            id="partner-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="contact@example.com"
+          />
+          {selectedPartner?.contact_email && selectedPartner.contact_email !== email.trim() && (
+            <p className="text-[11px] text-muted-foreground">
+              Current: <span className="font-mono">{selectedPartner.contact_email}</span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button
+          variant="outline"
+          disabled={dismiss.isPending || assign.isPending}
+          onClick={() => dismiss.mutate()}
+        >
+          {dismiss.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+          Dismiss
+        </Button>
+        <Button disabled={!partnerId || assign.isPending} onClick={handleSave}>
+          {assign.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+          Spremi partnera
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+function PartnerCombobox({
+  partners,
+  loading,
+  value,
+  onChange,
+}: {
+  partners: Partner[];
+  loading: boolean;
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = partners.find((p) => p.partner_id === value) ?? null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate text-left">
+            {loading
+              ? "Loading partners…"
+              : selected
+                ? `${selected.code}${selected.contact_email ? ` — ${selected.contact_email}` : ""}`
+                : "Select partner…"}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command
+          filter={(value, search) =>
+            value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+          }
+        >
+          <CommandInput placeholder="Search partner…" />
+          <CommandList>
+            <CommandEmpty>No partner found.</CommandEmpty>
+            <CommandGroup>
+              {partners.map((p) => {
+                const label = `${p.code}${p.contact_email ? ` — ${p.contact_email}` : ""}`;
+                return (
+                  <CommandItem
+                    key={p.partner_id}
+                    value={label}
+                    onSelect={() => {
+                      onChange(p.partner_id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === p.partner_id ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <span className="truncate">{label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function extractEmail(text: string): string | null {
+  const m = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  return m ? m[0] : null;
+}
+
+// ---------------------------------------------------------------------------
+// PRODUCT_MATCH
+// ---------------------------------------------------------------------------
+
 function ProductMatchBody({
   item,
   userEmail,
@@ -461,36 +669,46 @@ function ProductMatchBody({
   userId: string | null;
   onResolved: () => void;
 }) {
-  const payload: ProductMatchPayload =
+  const payload: ProductMatchPayload & { item_id?: string | null } =
     item.payload && typeof item.payload === "object"
-      ? (item.payload as ProductMatchPayload)
+      ? (item.payload as ProductMatchPayload & { item_id?: string | null })
       : {};
 
   const rawRef = payload.raw_product_ref ?? "";
-  const rawCode = payload.raw_code ?? null;
   const matchSource = payload.match_source ?? null;
   const confidence =
     typeof payload.mapping_confidence === "number" ? payload.mapping_confidence : null;
+  const itemId = payload.item_id ?? null;
   const suggestedSkuId = item.suggested_value;
 
-  const sku = useNpSkuDetails(suggestedSkuId);
-  const confirmMutation = useConfirmProductMapping();
+  const skus = useNpSkuList();
+  const confirm = useConfirmMapping();
+  const reject = useRejectMapping();
 
-  const [mode, setMode] = useState<"idle" | "correcting">("idle");
-  const [correctedSkuId, setCorrectedSkuId] = useState("");
+  const [selectedSkuId, setSelectedSkuId] = useState<string | null>(suggestedSkuId);
+
+  const suggestedSku = useMemo(
+    () => skus.data?.find((s) => s.np_sku_id === suggestedSkuId) ?? null,
+    [skus.data, suggestedSkuId],
+  );
 
   const handleConfirm = async () => {
+    if (!selectedSkuId) {
+      toast.error("Select an SKU first");
+      return;
+    }
+    if (!rawRef) {
+      toast.error("Missing raw_product_ref in payload");
+      return;
+    }
     try {
-      await confirmMutation.mutateAsync({
+      await confirm.mutateAsync({
         rawInput: rawRef,
-        suggestedSkuId,
-        userId,
-      });
-      await resolveReviewItem({
-        id: item.id,
-        status: "RESOLVED",
-        note: "Mapping confirmed",
+        npSkuId: selectedSkuId,
+        itemId,
+        reviewItemId: item.id,
         userEmail,
+        userId,
       });
       toast.success("Mapping confirmed");
       onResolved();
@@ -499,26 +717,18 @@ function ProductMatchBody({
     }
   };
 
-  const handleCorrect = async () => {
-    const corrected = correctedSkuId.trim();
-    if (!corrected) {
-      toast.error("Enter the correct SKU id");
+  const handleReject = async () => {
+    if (!rawRef) {
+      toast.error("Missing raw_product_ref in payload");
       return;
     }
     try {
-      await confirmMutation.mutateAsync({
+      await reject.mutateAsync({
         rawInput: rawRef,
-        suggestedSkuId,
-        correctedSkuId: corrected,
-        userId,
-      });
-      await resolveReviewItem({
-        id: item.id,
-        status: "RESOLVED",
-        note: `Mapping corrected to ${corrected}`,
+        reviewItemId: item.id,
         userEmail,
       });
-      toast.success("Mapping corrected");
+      toast.success("Mapping rejected");
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -526,7 +736,9 @@ function ProductMatchBody({
   };
 
   const confPct =
-    confidence !== null ? `${Math.round((confidence > 1 ? confidence : confidence * 100))}%` : null;
+    confidence !== null
+      ? `${Math.round(confidence > 1 ? confidence : confidence * 100)}%`
+      : null;
 
   return (
     <>
@@ -534,16 +746,11 @@ function ProductMatchBody({
         {/* Left: buyer */}
         <div className="rounded-md border bg-muted/20 p-3">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Buyer wrote
+            Buyer napisao
           </p>
           <p className="text-sm font-medium text-foreground">
             {rawRef || <span className="text-muted-foreground">—</span>}
           </p>
-          {rawCode && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Code: <span className="font-mono">{rawCode}</span>
-            </p>
-          )}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {matchSource && (
               <Badge variant="outline" className="text-[11px]">
@@ -564,103 +771,149 @@ function ProductMatchBody({
         {/* Right: suggestion */}
         <div className="rounded-md border bg-muted/20 p-3">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            System suggests
+            Sistem predlaže
           </p>
           {!suggestedSkuId ? (
-            <p className="text-sm text-muted-foreground">No suggestion</p>
-          ) : sku.isLoading ? (
+            <p className="text-sm text-muted-foreground">Nema prijedloga</p>
+          ) : skus.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-3 w-2/3" />
             </div>
-          ) : sku.data ? (
+          ) : suggestedSku ? (
             <>
               <p className="text-sm font-medium text-foreground">
-                {sku.data.brand ?? <span className="text-muted-foreground">No brand</span>}
+                {suggestedSku.brand ?? <span className="text-muted-foreground">No brand</span>}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {sku.data.inn ?? "—"}
-              </p>
+              <p className="text-xs text-muted-foreground">{suggestedSku.inn ?? "—"}</p>
               <p className="mt-1 text-xs text-foreground">
-                {sku.data.pack_description ?? "—"}
+                {suggestedSku.pack_description ?? "—"}
               </p>
               <p className="mt-2 text-[11px] font-mono text-muted-foreground">
                 {suggestedSkuId}
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              SKU {suggestedSkuId} not found
-            </p>
+            <p className="text-sm text-muted-foreground">SKU {suggestedSkuId} not found</p>
           )}
         </div>
       </div>
 
-      {mode === "correcting" && (
-        <div className="space-y-1.5">
-          <Label htmlFor="corrected-sku" className="text-xs">
-            Correct np_sku_id
-          </Label>
-          <Input
-            id="corrected-sku"
-            placeholder="e.g. S0042"
-            value={correctedSkuId}
-            onChange={(e) => setCorrectedSkuId(e.target.value)}
-            autoFocus
-          />
-        </div>
-      )}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Ispravi SKU</Label>
+        <SkuCombobox
+          skus={skus.data ?? []}
+          loading={skus.isLoading}
+          value={selectedSkuId}
+          onChange={setSelectedSkuId}
+        />
+      </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
-        {mode === "idle" ? (
-          <>
-            <Button
-              variant="outline"
-              disabled={confirmMutation.isPending}
-              onClick={() => setMode("correcting")}
-            >
-              <XCircle className="mr-2 h-3.5 w-3.5" />
-              Odbaci i ispravi
-            </Button>
-            <Button
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-              disabled={confirmMutation.isPending || !suggestedSkuId || !rawRef}
-              onClick={handleConfirm}
-            >
-              {confirmMutation.isPending ? (
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-              )}
-              Potvrdi mapping
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              disabled={confirmMutation.isPending}
-              onClick={() => {
-                setMode("idle");
-                setCorrectedSkuId("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={confirmMutation.isPending || !correctedSkuId.trim() || !rawRef}
-              onClick={handleCorrect}
-            >
-              {confirmMutation.isPending && (
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              )}
-              Save correction
-            </Button>
-          </>
-        )}
+        <Button
+          variant="outline"
+          className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          disabled={confirm.isPending || reject.isPending}
+          onClick={handleReject}
+        >
+          {reject.isPending ? (
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <XCircle className="mr-2 h-3.5 w-3.5" />
+          )}
+          Odbaci
+        </Button>
+        <Button
+          className="bg-emerald-600 text-white hover:bg-emerald-700"
+          disabled={!selectedSkuId || confirm.isPending || reject.isPending}
+          onClick={handleConfirm}
+        >
+          {confirm.isPending ? (
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+          )}
+          Potvrdi mapping
+        </Button>
       </DialogFooter>
     </>
   );
 }
+
+function SkuCombobox({
+  skus,
+  loading,
+  value,
+  onChange,
+}: {
+  skus: NpSkuDetails[];
+  loading: boolean;
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = skus.find((s) => s.np_sku_id === value) ?? null;
+  const label = (s: NpSkuDetails) =>
+    `${s.brand ?? "—"} — ${s.pack_description ?? s.np_sku_id}`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate text-left">
+            {loading ? "Loading SKUs…" : selected ? label(selected) : "Select SKU…"}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command
+          filter={(value, search) =>
+            value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+          }
+        >
+          <CommandInput placeholder="Search SKU, brand, INN…" />
+          <CommandList>
+            <CommandEmpty>No SKU found.</CommandEmpty>
+            <CommandGroup>
+              {skus.map((s) => {
+                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
+                return (
+                  <CommandItem
+                    key={s.np_sku_id}
+                    value={text}
+                    onSelect={() => {
+                      onChange(s.np_sku_id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === s.np_sku_id ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm">{label(s)}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {s.np_sku_id}
+                        {s.inn ? ` · ${s.inn}` : ""}
+                      </div>
+                    </div>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
