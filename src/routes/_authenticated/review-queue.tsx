@@ -297,37 +297,27 @@ function ResolveDialog({
   onClose,
   onResolved,
   userEmail,
+  userId,
 }: {
   item: ReviewItem | null;
   onClose: () => void;
   onResolved: () => void;
   userEmail: string | null;
+  userId: string | null;
 }) {
-  const [note, setNote] = useState("");
+  const isProductMatch = item?.category === "PRODUCT_MATCH";
   const readOnly = item?.status !== "OPEN";
-
-  const mutation = useMutation({
-    mutationFn: (status: "RESOLVED" | "DISMISSED") =>
-      resolveReviewItem({ id: item!.id, status, note: note.trim(), userEmail }),
-    onSuccess: (_d, status) => {
-      toast.success(status === "RESOLVED" ? "Marked as resolved" : "Dismissed");
-      setNote("");
-      onResolved();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   return (
     <Dialog
       open={!!item}
       onOpenChange={(open) => {
-        if (!open) {
-          setNote("");
-          onClose();
-        }
+        if (!open) onClose();
       }}
     >
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent
+        className={isProductMatch && !readOnly ? "sm:max-w-[720px]" : "sm:max-w-[480px]"}
+      >
         <DialogHeader>
           <DialogTitle className="text-base">
             {readOnly ? "Review item" : "Resolve review item"}
@@ -337,69 +327,324 @@ function ResolveDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {item && (
-          <div className="space-y-3">
-            <div className="rounded-md border bg-muted/30 p-3 text-xs text-foreground">
-              {item.description ?? <span className="text-muted-foreground">No description</span>}
-            </div>
-
-            {readOnly ? (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Resolution note</Label>
-                <div className="rounded-md border bg-muted/30 p-3 text-xs">
-                  {item.resolution_note ?? (
-                    <span className="text-muted-foreground">No note</span>
-                  )}
-                </div>
-                {item.resolved_by && (
-                  <p className="text-[11px] text-muted-foreground">
-                    by {item.resolved_by}
-                    {item.resolved_at &&
-                      ` · ${formatDistanceToNow(new Date(item.resolved_at), { addSuffix: true })}`}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label htmlFor="note" className="text-xs">
-                  Resolution note <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="note"
-                  rows={4}
-                  placeholder="Describe how this was resolved…"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {!readOnly && (
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              disabled={!note.trim() || mutation.isPending}
-              onClick={() => mutation.mutate("DISMISSED")}
-            >
-              {mutation.isPending && mutation.variables === "DISMISSED" && (
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              )}
-              Dismiss
-            </Button>
-            <Button
-              disabled={!note.trim() || mutation.isPending}
-              onClick={() => mutation.mutate("RESOLVED")}
-            >
-              {mutation.isPending && mutation.variables === "RESOLVED" && (
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              )}
-              Mark Resolved
-            </Button>
-          </DialogFooter>
-        )}
+        {item && isProductMatch && !readOnly ? (
+          <ProductMatchBody
+            item={item}
+            userEmail={userEmail}
+            userId={userId}
+            onResolved={onResolved}
+          />
+        ) : item ? (
+          <GenericBody
+            item={item}
+            readOnly={readOnly}
+            userEmail={userEmail}
+            onResolved={onResolved}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
 }
+
+function GenericBody({
+  item,
+  readOnly,
+  userEmail,
+  onResolved,
+}: {
+  item: ReviewItem;
+  readOnly: boolean;
+  userEmail: string | null;
+  onResolved: () => void;
+}) {
+  const [note, setNote] = useState("");
+  const mutation = useMutation({
+    mutationFn: (status: "RESOLVED" | "DISMISSED") =>
+      resolveReviewItem({ id: item.id, status, note: note.trim(), userEmail }),
+    onSuccess: (_d, status) => {
+      toast.success(status === "RESOLVED" ? "Marked as resolved" : "Dismissed");
+      setNote("");
+      onResolved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <>
+      <div className="space-y-3">
+        <div className="rounded-md border bg-muted/30 p-3 text-xs text-foreground">
+          {item.description ?? <span className="text-muted-foreground">No description</span>}
+        </div>
+
+        {readOnly ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Resolution note</Label>
+            <div className="rounded-md border bg-muted/30 p-3 text-xs">
+              {item.resolution_note ?? <span className="text-muted-foreground">No note</span>}
+            </div>
+            {item.resolved_by && (
+              <p className="text-[11px] text-muted-foreground">
+                by {item.resolved_by}
+                {item.resolved_at &&
+                  ` · ${formatDistanceToNow(new Date(item.resolved_at), { addSuffix: true })}`}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label htmlFor="note" className="text-xs">
+              Resolution note <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="note"
+              rows={4}
+              placeholder="Describe how this was resolved…"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+        )}
+      </div>
+
+      {!readOnly && (
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button
+            variant="outline"
+            disabled={!note.trim() || mutation.isPending}
+            onClick={() => mutation.mutate("DISMISSED")}
+          >
+            {mutation.isPending && mutation.variables === "DISMISSED" && (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            )}
+            Dismiss
+          </Button>
+          <Button
+            disabled={!note.trim() || mutation.isPending}
+            onClick={() => mutation.mutate("RESOLVED")}
+          >
+            {mutation.isPending && mutation.variables === "RESOLVED" && (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            )}
+            Mark Resolved
+          </Button>
+        </DialogFooter>
+      )}
+    </>
+  );
+}
+
+function ProductMatchBody({
+  item,
+  userEmail,
+  userId,
+  onResolved,
+}: {
+  item: ReviewItem;
+  userEmail: string | null;
+  userId: string | null;
+  onResolved: () => void;
+}) {
+  const payload: ProductMatchPayload =
+    item.payload && typeof item.payload === "object"
+      ? (item.payload as ProductMatchPayload)
+      : {};
+
+  const rawRef = payload.raw_product_ref ?? "";
+  const rawCode = payload.raw_code ?? null;
+  const matchSource = payload.match_source ?? null;
+  const confidence =
+    typeof payload.mapping_confidence === "number" ? payload.mapping_confidence : null;
+  const suggestedSkuId = item.suggested_value;
+
+  const sku = useNpSkuDetails(suggestedSkuId);
+  const confirmMutation = useConfirmProductMapping();
+
+  const [mode, setMode] = useState<"idle" | "correcting">("idle");
+  const [correctedSkuId, setCorrectedSkuId] = useState("");
+
+  const handleConfirm = async () => {
+    try {
+      await confirmMutation.mutateAsync({
+        rawInput: rawRef,
+        suggestedSkuId,
+        userId,
+      });
+      await resolveReviewItem({
+        id: item.id,
+        status: "RESOLVED",
+        note: "Mapping confirmed",
+        userEmail,
+      });
+      toast.success("Mapping confirmed");
+      onResolved();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const handleCorrect = async () => {
+    const corrected = correctedSkuId.trim();
+    if (!corrected) {
+      toast.error("Enter the correct SKU id");
+      return;
+    }
+    try {
+      await confirmMutation.mutateAsync({
+        rawInput: rawRef,
+        suggestedSkuId,
+        correctedSkuId: corrected,
+        userId,
+      });
+      await resolveReviewItem({
+        id: item.id,
+        status: "RESOLVED",
+        note: `Mapping corrected to ${corrected}`,
+        userEmail,
+      });
+      toast.success("Mapping corrected");
+      onResolved();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const confPct =
+    confidence !== null ? `${Math.round((confidence > 1 ? confidence : confidence * 100))}%` : null;
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Left: buyer */}
+        <div className="rounded-md border bg-muted/20 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Buyer wrote
+          </p>
+          <p className="text-sm font-medium text-foreground">
+            {rawRef || <span className="text-muted-foreground">—</span>}
+          </p>
+          {rawCode && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Code: <span className="font-mono">{rawCode}</span>
+            </p>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {matchSource && (
+              <Badge variant="outline" className="text-[11px]">
+                {matchSource}
+              </Badge>
+            )}
+            {confPct && (
+              <Badge variant="outline" className="text-[11px]">
+                {confPct}
+              </Badge>
+            )}
+          </div>
+          {payload.match_reason && (
+            <p className="mt-2 text-[11px] text-muted-foreground">{payload.match_reason}</p>
+          )}
+        </div>
+
+        {/* Right: suggestion */}
+        <div className="rounded-md border bg-muted/20 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            System suggests
+          </p>
+          {!suggestedSkuId ? (
+            <p className="text-sm text-muted-foreground">No suggestion</p>
+          ) : sku.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ) : sku.data ? (
+            <>
+              <p className="text-sm font-medium text-foreground">
+                {sku.data.brand ?? <span className="text-muted-foreground">No brand</span>}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {sku.data.inn ?? "—"}
+              </p>
+              <p className="mt-1 text-xs text-foreground">
+                {sku.data.pack_description ?? "—"}
+              </p>
+              <p className="mt-2 text-[11px] font-mono text-muted-foreground">
+                {suggestedSkuId}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              SKU {suggestedSkuId} not found
+            </p>
+          )}
+        </div>
+      </div>
+
+      {mode === "correcting" && (
+        <div className="space-y-1.5">
+          <Label htmlFor="corrected-sku" className="text-xs">
+            Correct np_sku_id
+          </Label>
+          <Input
+            id="corrected-sku"
+            placeholder="e.g. S0042"
+            value={correctedSkuId}
+            onChange={(e) => setCorrectedSkuId(e.target.value)}
+            autoFocus
+          />
+        </div>
+      )}
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        {mode === "idle" ? (
+          <>
+            <Button
+              variant="outline"
+              disabled={confirmMutation.isPending}
+              onClick={() => setMode("correcting")}
+            >
+              <XCircle className="mr-2 h-3.5 w-3.5" />
+              Odbaci i ispravi
+            </Button>
+            <Button
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={confirmMutation.isPending || !suggestedSkuId || !rawRef}
+              onClick={handleConfirm}
+            >
+              {confirmMutation.isPending ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+              )}
+              Potvrdi mapping
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              disabled={confirmMutation.isPending}
+              onClick={() => {
+                setMode("idle");
+                setCorrectedSkuId("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={confirmMutation.isPending || !correctedSkuId.trim() || !rawRef}
+              onClick={handleCorrect}
+            >
+              {confirmMutation.isPending && (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              )}
+              Save correction
+            </Button>
+          </>
+        )}
+      </DialogFooter>
+    </>
+  );
+}
+
