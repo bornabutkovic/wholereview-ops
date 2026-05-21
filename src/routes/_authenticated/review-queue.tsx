@@ -345,7 +345,6 @@ function ResolveDialog({
           <ProductMatchBody
             item={item}
             userId={userId}
-            userId={userId}
             onResolved={onResolved}
           />
         ) : item && isPartnerUnknown ? (
