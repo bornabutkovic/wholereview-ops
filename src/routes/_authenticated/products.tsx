@@ -72,6 +72,10 @@ interface Alias {
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 
+function productName(s: Pick<Sku, "brand" | "inn">) {
+  return [s.brand, s.inn ? `(${s.inn})` : null].filter(Boolean).join(" ") || "—";
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
@@ -254,7 +258,7 @@ function ProductsPage() {
                     onClick={() => setSelected(s)}
                   >
                     <TableCell className="font-mono text-xs">{s.np_sku_id}</TableCell>
-                    <TableCell className="font-medium">{s.name ?? "—"}</TableCell>
+                    <TableCell className="font-medium">{productName(s)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {s.pack_description ?? "—"}
                     </TableCell>
@@ -294,7 +298,7 @@ function ProductDetailSheet(props: { sku: Sku | null; onClose: () => void }) {
         {sku && (
           <>
             <SheetHeader>
-              <SheetTitle className="text-base">{sku.name ?? "—"}</SheetTitle>
+              <SheetTitle className="text-base">{productName(sku)}</SheetTitle>
               <SheetDescription className="font-mono text-xs">
                 {sku.np_sku_id}
               </SheetDescription>
