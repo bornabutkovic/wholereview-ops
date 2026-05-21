@@ -38,15 +38,18 @@ export function useNpSkuList() {
   });
 }
 
-export function usePartners() {
+export function usePartners(options?: { buyersOnly?: boolean }) {
+  const buyersOnly = options?.buyersOnly ?? false;
   return useQuery({
-    queryKey: ["partners"],
+    queryKey: ["partners", { buyersOnly }],
     queryFn: async (): Promise<Partner[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("partner")
-        .select("partner_id, code, contact_email")
-        .order("code", { ascending: true })
+        .select("partner_id, code, name, contact_email, is_buyer")
+        .order("name", { ascending: true })
         .limit(2000);
+      if (buyersOnly) q = q.eq("is_buyer", true);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as Partner[];
     },
@@ -80,9 +83,9 @@ function normalizeSku(row: unknown): NpSkuDetails {
 
 export interface AssignPartnerArgs {
   partnerId: string;
-  partnerCode: string;
-  email: string;
-  currentEmail: string | null;
+  partnerName: string;
+  fromAddress: string | null;
+  emailLogId: string | null;
   reviewItemId: string;
   userEmail: string | null;
 }
@@ -90,18 +93,27 @@ export interface AssignPartnerArgs {
 export function useAssignPartner() {
   return useMutation({
     mutationFn: async (args: AssignPartnerArgs) => {
-      const trimmedEmail = args.email.trim();
-      if (trimmedEmail && trimmedEmail !== (args.currentEmail ?? "")) {
+      const trimmedEmail = args.fromAddress?.trim() || null;
+      if (trimmedEmail) {
         const { error } = await supabase
           .from("partner")
           .update({ contact_email: trimmedEmail })
           .eq("partner_id", args.partnerId);
         if (error) throw error;
       }
+
+      if (args.emailLogId) {
+        const { error: elErr } = await supabase
+          .from("email_log")
+          .update({ partner_id: args.partnerId })
+          .eq("id", args.emailLogId);
+        if (elErr) throw elErr;
+      }
+
       await resolveReviewItem({
         id: args.reviewItemId,
         status: "RESOLVED",
-        note: `Partner assigned: ${args.partnerCode}`,
+        note: `Linked to partner: ${args.partnerName}`,
         userEmail: args.userEmail,
       });
     },

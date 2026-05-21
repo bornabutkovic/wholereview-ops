@@ -6,7 +6,7 @@ import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, Chev
 import { toast } from "sonner";
 
 import { listReviewItems, resolveReviewItem } from "@/lib/review-queue";
-import type { NpSkuDetails, Partner, ProductMatchPayload, ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
+import type { NpSkuDetails, Partner, PartnerUnknownPayload, ProductMatchPayload, ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
 import {
   useAssignPartner,
   useConfirmMapping,
@@ -474,11 +474,18 @@ function PartnerUnknownBody({
   userEmail: string | null;
   onResolved: () => void;
 }) {
-  const partners = usePartners();
+  const partners = usePartners({ buyersOnly: true });
   const assign = useAssignPartner();
   const [partnerId, setPartnerId] = useState<string | null>(null);
-  const unknownEmail = extractEmail(item.description ?? "") ?? "";
-  const [email, setEmail] = useState(unknownEmail);
+
+  const payload: PartnerUnknownPayload =
+    item.payload && typeof item.payload === "object"
+      ? (item.payload as PartnerUnknownPayload)
+      : {};
+
+  const unknownEmail =
+    payload.from_address?.trim() || extractEmail(item.description ?? "") || "";
+  const emailLogId = payload.email_log_id ?? null;
 
   const dismiss = useMutation({
     mutationFn: () =>
@@ -497,7 +504,7 @@ function PartnerUnknownBody({
 
   const selectedPartner = partners.data?.find((p) => p.partner_id === partnerId) ?? null;
 
-  const handleSave = async () => {
+  const handleLink = async () => {
     if (!selectedPartner) {
       toast.error("Select a partner first");
       return;
@@ -505,13 +512,13 @@ function PartnerUnknownBody({
     try {
       await assign.mutateAsync({
         partnerId: selectedPartner.partner_id,
-        partnerCode: selectedPartner.code,
-        email,
-        currentEmail: selectedPartner.contact_email,
+        partnerName: selectedPartner.name ?? selectedPartner.code,
+        fromAddress: unknownEmail || null,
+        emailLogId,
         reviewItemId: item.id,
         userEmail,
       });
-      toast.success(`Assigned to ${selectedPartner.code}`);
+      toast.success(`Linked to ${selectedPartner.name ?? selectedPartner.code}`);
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -531,31 +538,23 @@ function PartnerUnknownBody({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Assign to partner</Label>
+          <Label className="text-xs">Link to partner</Label>
           <PartnerCombobox
             partners={partners.data ?? []}
             loading={partners.isLoading}
             value={partnerId}
             onChange={setPartnerId}
           />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="partner-email" className="text-xs">
-            Add email to this partner
-          </Label>
-          <Input
-            id="partner-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="contact@example.com"
-          />
-          {selectedPartner?.contact_email && selectedPartner.contact_email !== email.trim() && (
-            <p className="text-[11px] text-muted-foreground">
-              Current: <span className="font-mono">{selectedPartner.contact_email}</span>
-            </p>
-          )}
+          {selectedPartner?.contact_email &&
+            unknownEmail &&
+            selectedPartner.contact_email !== unknownEmail && (
+              <p className="text-[11px] text-muted-foreground">
+                Current contact:{" "}
+                <span className="font-mono">{selectedPartner.contact_email}</span>{" "}
+                will be replaced with{" "}
+                <span className="font-mono">{unknownEmail}</span>
+              </p>
+            )}
         </div>
       </div>
 
@@ -568,9 +567,9 @@ function PartnerUnknownBody({
           {dismiss.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
           Dismiss
         </Button>
-        <Button disabled={!partnerId || assign.isPending} onClick={handleSave}>
+        <Button disabled={!partnerId || assign.isPending} onClick={handleLink}>
           {assign.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-          Spremi partnera
+          Link to Partner
         </Button>
       </DialogFooter>
     </>
@@ -590,6 +589,10 @@ function PartnerCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const selected = partners.find((p) => p.partner_id === value) ?? null;
+  const labelFor = (p: Partner) => {
+    const primary = p.name ?? p.code;
+    return p.contact_email ? `${primary} — ${p.contact_email}` : primary;
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -604,7 +607,7 @@ function PartnerCombobox({
             {loading
               ? "Loading partners…"
               : selected
-                ? `${selected.code}${selected.contact_email ? ` — ${selected.contact_email}` : ""}`
+                ? labelFor(selected)
                 : "Select partner…"}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -621,11 +624,12 @@ function PartnerCombobox({
             <CommandEmpty>No partner found.</CommandEmpty>
             <CommandGroup>
               {partners.map((p) => {
-                const label = `${p.code}${p.contact_email ? ` — ${p.contact_email}` : ""}`;
+                const label = labelFor(p);
+                const searchText = `${p.name ?? ""} ${p.code} ${p.contact_email ?? ""}`;
                 return (
                   <CommandItem
                     key={p.partner_id}
-                    value={label}
+                    value={searchText}
                     onSelect={() => {
                       onChange(p.partner_id);
                       setOpen(false);
