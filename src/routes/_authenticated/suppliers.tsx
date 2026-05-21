@@ -1,0 +1,574 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow, format } from "date-fns";
+import { AlertCircle, Check, Inbox, Search, X } from "lucide-react";
+
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export const Route = createFileRoute("/_authenticated/suppliers")({
+  component: SuppliersPage,
+});
+
+// ---------------------------------------------------------------------------
+// Shared
+// ---------------------------------------------------------------------------
+
+type SupplierCode = "MEDIKA" | "OKTAL";
+const SUPPLIERS: SupplierCode[] = ["MEDIKA", "OKTAL"];
+
+const SUPPLIER_STYLES: Record<SupplierCode, string> = {
+  MEDIKA: "bg-blue-50 text-blue-700 border-blue-200",
+  OKTAL: "bg-purple-50 text-purple-700 border-purple-200",
+};
+
+function SupplierBadge({ code }: { code: string | null }) {
+  const upper = (code ?? "").toUpperCase();
+  const known = SUPPLIERS.includes(upper as SupplierCode)
+    ? (upper as SupplierCode)
+    : null;
+  return (
+    <Badge
+      variant="outline"
+      className={`font-medium ${
+        known ? SUPPLIER_STYLES[known] : "bg-slate-100 text-slate-600 border-slate-200"
+      }`}
+    >
+      {upper || "—"}
+    </Badge>
+  );
+}
+
+function SuppliersPage() {
+  return (
+    <div className="flex h-full flex-col">
+      <header className="border-b px-6 py-4">
+        <h1 className="text-lg font-semibold tracking-tight">Suppliers</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Draft orders and supplier offers
+        </p>
+      </header>
+
+      <Tabs defaultValue="draft-orders" className="flex flex-1 flex-col">
+        <div className="border-b px-6 pt-3">
+          <TabsList>
+            <TabsTrigger value="draft-orders" className="text-xs">
+              Draft Orders
+            </TabsTrigger>
+            <TabsTrigger value="supplier-offers" className="text-xs">
+              Supplier Offers
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="draft-orders" className="m-0 flex-1 overflow-hidden">
+          <DraftOrdersTab />
+        </TabsContent>
+        <TabsContent value="supplier-offers" className="m-0 flex-1 overflow-hidden">
+          <SupplierOffersTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab 1 — Draft Orders
+// ---------------------------------------------------------------------------
+
+type DraftStatus = "draft" | "sent" | "confirmed";
+
+const DRAFT_STATUS_STYLES: Record<DraftStatus, string> = {
+  draft: "bg-slate-100 text-slate-700 border-slate-200",
+  sent: "bg-blue-50 text-blue-700 border-blue-200",
+  confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
+
+const DRAFT_STATUS_FILTERS: { value: DraftStatus | "ALL"; label: string }[] = [
+  { value: "ALL", label: "All statuses" },
+  { value: "draft", label: "Draft" },
+  { value: "sent", label: "Sent" },
+  { value: "confirmed", label: "Confirmed" },
+];
+
+interface EmailLogRow {
+  id: string;
+  supplier_code: string | null;
+  status: string | null;
+  created_at: string;
+  sent_at: string | null;
+  payload: unknown;
+}
+
+interface DraftOrder {
+  id: string;
+  supplier: string;
+  date: string;
+  productsCount: number;
+  totalQuantity: number;
+  status: DraftStatus;
+}
+
+function normalizeDraftStatus(s: string | null | undefined): DraftStatus {
+  const v = (s ?? "").toLowerCase();
+  if (v === "sent") return "sent";
+  if (v === "confirmed") return "confirmed";
+  return "draft";
+}
+
+interface DraftPayloadItem {
+  quantity?: number | null;
+  qty?: number | null;
+  qty_requested?: number | null;
+}
+
+function extractItems(payload: unknown): DraftPayloadItem[] {
+  if (!payload || typeof payload !== "object") return [];
+  const p = payload as Record<string, unknown>;
+  const candidates = [p.items, p.lines, p.products];
+  for (const c of candidates) {
+    if (Array.isArray(c)) return c as DraftPayloadItem[];
+  }
+  return [];
+}
+
+function normalizeDraft(row: EmailLogRow): DraftOrder {
+  const items = extractItems(row.payload);
+  const totalQty = items.reduce(
+    (acc, it) =>
+      acc + (it.quantity ?? it.qty ?? it.qty_requested ?? 0),
+    0,
+  );
+  return {
+    id: row.id,
+    supplier: row.supplier_code ?? "—",
+    date: row.sent_at ?? row.created_at,
+    productsCount: items.length,
+    totalQuantity: totalQty,
+    status: normalizeDraftStatus(row.status),
+  };
+}
+
+function DraftOrdersTab() {
+  const [status, setStatus] = useState<DraftStatus | "ALL">("ALL");
+  const [supplier, setSupplier] = useState<SupplierCode | "ALL">("ALL");
+
+  const query = useQuery({
+    queryKey: ["supplier-draft-orders"],
+    queryFn: async (): Promise<DraftOrder[]> => {
+      const { data, error } = await supabase
+        .from("email_log")
+        .select("id, supplier_code, status, created_at, sent_at, payload")
+        .eq("doc_type", "SUPPLIER_OFFER")
+        .eq("direction", "outbound")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return ((data ?? []) as unknown as EmailLogRow[]).map(normalizeDraft);
+    },
+  });
+
+  const filtered = useMemo(() => {
+    return (query.data ?? []).filter((d) => {
+      if (status !== "ALL" && d.status !== status) return false;
+      if (supplier !== "ALL" && d.supplier.toUpperCase() !== supplier) return false;
+      return true;
+    });
+  }, [query.data, status, supplier]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex flex-wrap items-center gap-2 border-b px-6 py-3">
+        <Select value={status} onValueChange={(v) => setStatus(v as DraftStatus | "ALL")}>
+          <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DRAFT_STATUS_FILTERS.map((s) => (
+              <SelectItem key={s.value} value={s.value} className="text-xs">
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={supplier}
+          onValueChange={(v) => setSupplier(v as SupplierCode | "ALL")}
+        >
+          <SelectTrigger className="h-8 w-[150px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL" className="text-xs">
+              All suppliers
+            </SelectItem>
+            {SUPPLIERS.map((s) => (
+              <SelectItem key={s} value={s} className="text-xs">
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="ml-auto text-xs text-muted-foreground">
+          {query.isLoading
+            ? "Loading…"
+            : `${filtered.length} draft${filtered.length === 1 ? "" : "s"}`}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto">
+        {query.isError ? (
+          <ErrorState
+            message={(query.error as Error)?.message ?? "Failed to load"}
+            onRetry={() => query.refetch()}
+          />
+        ) : query.isLoading ? (
+          <LoadingState />
+        ) : filtered.length === 0 ? (
+          <EmptyState label="No draft orders" />
+        ) : (
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-background">
+              <TableRow>
+                <TableHead className="w-[130px] text-xs">Supplier</TableHead>
+                <TableHead className="w-[160px] text-xs">Date</TableHead>
+                <TableHead className="w-[100px] text-right text-xs">Products</TableHead>
+                <TableHead className="w-[130px] text-right text-xs">Total Qty</TableHead>
+                <TableHead className="w-[130px] text-xs">Status</TableHead>
+                <TableHead className="w-[100px] text-xs"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((d) => (
+                <TableRow key={d.id} className="text-sm">
+                  <TableCell>
+                    <SupplierBadge code={d.supplier} />
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(d.date), { addSuffix: true })}
+                  </TableCell>
+                  <TableCell className="text-right text-[13px] tabular-nums">
+                    {d.productsCount}
+                  </TableCell>
+                  <TableCell className="text-right text-[13px] tabular-nums">
+                    {d.totalQuantity.toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={`font-medium ${DRAFT_STATUS_STYLES[d.status]}`}
+                    >
+                      {d.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="outline">
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab 2 — Supplier Offers
+// ---------------------------------------------------------------------------
+
+type OfferStatus =
+  | "pending_review"
+  | "accepted"
+  | "rejected"
+  | "buyer_query_sent"
+  | "buyer_accepted"
+  | "buyer_rejected";
+
+const OFFER_STATUS_STYLES: Record<OfferStatus, string> = {
+  pending_review: "bg-yellow-50 text-yellow-800 border-yellow-200",
+  accepted: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  rejected: "bg-rose-50 text-rose-700 border-rose-200",
+  buyer_query_sent: "bg-blue-50 text-blue-700 border-blue-200",
+  buyer_accepted: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  buyer_rejected: "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+const OFFER_STATUS_LABELS: Record<OfferStatus, string> = {
+  pending_review: "pending review",
+  accepted: "accepted",
+  rejected: "rejected",
+  buyer_query_sent: "buyer query sent",
+  buyer_accepted: "buyer accepted",
+  buyer_rejected: "buyer rejected",
+};
+
+const OFFER_STATUS_FILTERS: { value: OfferStatus | "ALL"; label: string }[] = [
+  { value: "ALL", label: "All statuses" },
+  { value: "pending_review", label: "Pending review" },
+  { value: "accepted", label: "Accepted" },
+  { value: "rejected", label: "Rejected" },
+  { value: "buyer_query_sent", label: "Buyer query sent" },
+  { value: "buyer_accepted", label: "Buyer accepted" },
+  { value: "buyer_rejected", label: "Buyer rejected" },
+];
+
+interface SupplierOfferRow {
+  id: string;
+  supplier_code: string | null;
+  raw_product_name: string | null;
+  quantity_offered: number | null;
+  price_per_unit: number | null;
+  currency: string | null;
+  expiry_date: string | null;
+  expiry_ok: boolean | null;
+  status: string | null;
+}
+
+function normalizeOfferStatus(s: string | null | undefined): OfferStatus {
+  const v = (s ?? "").toLowerCase();
+  if (
+    v === "pending_review" ||
+    v === "accepted" ||
+    v === "rejected" ||
+    v === "buyer_query_sent" ||
+    v === "buyer_accepted" ||
+    v === "buyer_rejected"
+  )
+    return v;
+  return "pending_review";
+}
+
+function SupplierOffersTab() {
+  const [status, setStatus] = useState<OfferStatus | "ALL">("ALL");
+  const [supplier, setSupplier] = useState<SupplierCode | "ALL">("ALL");
+  const [search, setSearch] = useState("");
+
+  const query = useQuery({
+    queryKey: ["supplier-offers"],
+    queryFn: async (): Promise<SupplierOfferRow[]> => {
+      const { data, error } = await supabase
+        .from("supplier_offers")
+        .select(
+          "id, supplier_code, raw_product_name, quantity_offered, price_per_unit, currency, expiry_date, expiry_ok, status",
+        )
+        .order("id", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as SupplierOfferRow[];
+    },
+  });
+
+  const filtered = useMemo(() => {
+    return (query.data ?? []).filter((o) => {
+      const s = normalizeOfferStatus(o.status);
+      if (status !== "ALL" && s !== status) return false;
+      if (
+        supplier !== "ALL" &&
+        (o.supplier_code ?? "").toUpperCase() !== supplier
+      )
+        return false;
+      if (
+        search.trim() &&
+        !(o.raw_product_name ?? "").toLowerCase().includes(search.toLowerCase())
+      )
+        return false;
+      return true;
+    });
+  }, [query.data, status, supplier, search]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex flex-wrap items-center gap-2 border-b px-6 py-3">
+        <Select value={status} onValueChange={(v) => setStatus(v as OfferStatus | "ALL")}>
+          <SelectTrigger className="h-8 w-[170px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {OFFER_STATUS_FILTERS.map((s) => (
+              <SelectItem key={s.value} value={s.value} className="text-xs">
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={supplier}
+          onValueChange={(v) => setSupplier(v as SupplierCode | "ALL")}
+        >
+          <SelectTrigger className="h-8 w-[150px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL" className="text-xs">
+              All suppliers
+            </SelectItem>
+            {SUPPLIERS.map((s) => (
+              <SelectItem key={s} value={s} className="text-xs">
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="relative ml-auto">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search product…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 w-[240px] pl-8 text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto">
+        {query.isError ? (
+          <ErrorState
+            message={(query.error as Error)?.message ?? "Failed to load"}
+            onRetry={() => query.refetch()}
+          />
+        ) : query.isLoading ? (
+          <LoadingState />
+        ) : filtered.length === 0 ? (
+          <EmptyState label="No supplier offers" />
+        ) : (
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-background">
+              <TableRow>
+                <TableHead className="w-[120px] text-xs">Supplier</TableHead>
+                <TableHead className="text-xs">Product</TableHead>
+                <TableHead className="w-[110px] text-right text-xs">Qty Offered</TableHead>
+                <TableHead className="w-[130px] text-right text-xs">Price</TableHead>
+                <TableHead className="w-[130px] text-xs">Expiry Date</TableHead>
+                <TableHead className="w-[90px] text-center text-xs">Expiry OK</TableHead>
+                <TableHead className="w-[150px] text-xs">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((o) => {
+                const s = normalizeOfferStatus(o.status);
+                return (
+                  <TableRow key={o.id} className="text-sm">
+                    <TableCell>
+                      <SupplierBadge code={o.supplier_code} />
+                    </TableCell>
+                    <TableCell className="max-w-0 truncate text-[13px]">
+                      {o.raw_product_name ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right text-[13px] tabular-nums">
+                      {(o.quantity_offered ?? 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right text-[13px] tabular-nums">
+                      {o.price_per_unit != null
+                        ? `${o.price_per_unit.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} ${o.currency ?? ""}`.trim()
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {o.expiry_date
+                        ? format(new Date(o.expiry_date), "yyyy-MM-dd")
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {o.expiry_ok === true ? (
+                        <Check className="mx-auto h-4 w-4 text-emerald-600" />
+                      ) : o.expiry_ok === false ? (
+                        <X className="mx-auto h-4 w-4 text-rose-600" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`font-medium ${OFFER_STATUS_STYLES[s]}`}
+                      >
+                        {OFFER_STATUS_LABELS[s]}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// States
+// ---------------------------------------------------------------------------
+
+function LoadingState() {
+  return (
+    <div className="space-y-2 p-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-6 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+        <Inbox className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Nothing matches the current filters.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-6 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+        <AlertCircle className="h-5 w-5 text-destructive" />
+      </div>
+      <div>
+        <p className="text-sm font-medium">Failed to load</p>
+        <p className="mt-1 text-xs text-muted-foreground">{message}</p>
+      </div>
+      <Button size="sm" variant="outline" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
+  );
+}

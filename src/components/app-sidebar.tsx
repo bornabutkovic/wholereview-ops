@@ -9,6 +9,7 @@ import {
   BarChart3,
   ShoppingCart,
   MessageSquare,
+  Truck,
   LogOut,
 } from "lucide-react";
 import {
@@ -34,6 +35,7 @@ const items = [
   { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
   { title: "Enquiries", url: "/enquiries", icon: MessageSquare },
   { title: "Review Queue", url: "/review-queue", icon: ListChecks },
+  { title: "Suppliers", url: "/suppliers", icon: Truck },
   { title: "Stock", url: "/stock", icon: Package },
   { title: "Prices", url: "/prices", icon: Tag },
   { title: "Partners", url: "/partners", icon: Users },
