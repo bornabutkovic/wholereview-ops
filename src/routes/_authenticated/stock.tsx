@@ -305,7 +305,7 @@ function WarehouseBatches() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((b) => <BatchRow key={b.id} batch={b} />)
+              filtered.map((b) => <BatchRow key={b.batch_id} batch={b} />)
             )}
           </TableBody>
         </Table>
@@ -326,7 +326,7 @@ function BatchRow({ batch: b }: { batch: Batch }) {
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-xs">{b.id.slice(0, 8)}</TableCell>
+      <TableCell className="font-mono text-xs">{b.batch_id.slice(0, 8)}</TableCell>
       <TableCell className="font-mono text-xs">{b.np_sku_id ?? "—"}</TableCell>
       <TableCell className="font-medium text-sm">{b.product_name ?? "—"}</TableCell>
       <TableCell>
@@ -348,7 +348,7 @@ function BatchRow({ batch: b }: { batch: Batch }) {
         <StatusBadge status={b.status} />
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">
-        {b.received_date ? format(new Date(b.received_date), "dd MMM yyyy") : "—"}
+        {b.received_at ? format(new Date(b.received_at), "dd MMM yyyy") : "—"}
       </TableCell>
     </TableRow>
   );
