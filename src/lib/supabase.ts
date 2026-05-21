@@ -37,8 +37,11 @@ export interface ReviewItem {
 }
 
 export interface ProductMatchPayload {
+  raw_input?: string | null;
   raw_product_ref?: string | null;
   raw_code?: string | null;
+  partner_id?: string | null;
+  item_id?: string | null;
   match_source?: string | null;
   mapping_confidence?: number | null;
   match_reason?: string | null;
@@ -49,6 +52,7 @@ export interface NpSkuDetails {
   pack_description: string | null;
   brand: string | null;
   inn: string | null;
+  name: string | null;
 }
 
 export interface Partner {
