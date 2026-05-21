@@ -849,7 +849,7 @@ function SkuCombobox(props: SkuComboboxProps) {
   const [open, setOpen] = useState(false);
   const selected = skus.find((s) => s.np_sku_id === value) ?? null;
   const label = (s: NpSkuDetails) =>
-    s.name ? `${s.np_sku_id} — ${s.name}` : s.np_sku_id;
+    s.brand ? `${s.np_sku_id} — ${s.brand}` : s.np_sku_id;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -877,7 +877,7 @@ function SkuCombobox(props: SkuComboboxProps) {
             <CommandEmpty>No SKU found.</CommandEmpty>
             <CommandGroup>
               {skus.map((s) => {
-                const text = `${s.np_sku_id} ${s.name ?? ""} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
+                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
                 return (
                   <CommandItem
                     key={s.np_sku_id}
