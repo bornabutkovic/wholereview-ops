@@ -47,6 +47,11 @@ export interface ProductMatchPayload {
   match_reason?: string | null;
 }
 
+export interface PartnerUnknownPayload {
+  from_address?: string | null;
+  email_log_id?: string | null;
+}
+
 export interface NpSkuDetails {
   np_sku_id: string;
   pack_description: string | null;
@@ -58,5 +63,7 @@ export interface NpSkuDetails {
 export interface Partner {
   partner_id: string;
   code: string;
+  name: string | null;
   contact_email: string | null;
+  is_buyer: boolean | null;
 }
