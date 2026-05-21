@@ -256,7 +256,6 @@ function ReviewQueuePage() {
             qc.invalidateQueries({ queryKey: ["review-queue"] });
             setActive(null);
           }}
-          userId={user?.email ?? null}
           userId={user?.id ?? null}
         />
 
