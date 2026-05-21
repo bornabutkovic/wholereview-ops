@@ -259,7 +259,7 @@ function DraftOrdersTab() {
                     <SupplierBadge code={d.supplier} />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(d.date), { addSuffix: true })}
+                    {d.date ? formatDistanceToNow(new Date(d.date), { addSuffix: true }) : "—"}
                   </TableCell>
                   <TableCell className="text-right text-[13px] tabular-nums">
                     {d.productsCount}
