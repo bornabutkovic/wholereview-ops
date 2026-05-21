@@ -221,7 +221,6 @@ export interface ConfirmMappingArgs {
   itemId?: string | null;
   reviewItemId: string;
   userId: string | null;
-  userId: string | null;
 }
 
 export function useConfirmMapping() {
