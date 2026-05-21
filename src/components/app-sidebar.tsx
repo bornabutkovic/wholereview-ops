@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import npLogo from "@/assets/np-logo.png";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -39,13 +40,15 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <div className="flex h-full flex-col bg-slate-900 text-slate-200">
-        <SidebarHeader className="px-4 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-500 text-xs font-bold text-white">
-              N
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-white">Novo Pharma</span>
+      <div className="flex h-full flex-col bg-[#1B2A4A] text-slate-300">
+        <SidebarHeader className="px-4 py-5">
+          <div className="flex items-center">
+            <img
+              src={npLogo}
+              alt="Novo Pharma"
+              className="max-h-9 w-auto object-contain brightness-0 invert"
+              style={{ maxHeight: 36 }}
+            />
           </div>
         </SidebarHeader>
 
@@ -62,8 +65,8 @@ export function AppSidebar() {
                         size="sm"
                         className={
                           active
-                            ? "bg-blue-500/15 text-blue-400 hover:bg-blue-500/20 hover:text-blue-400"
-                            : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                            ? "bg-[#00B8C8] text-white hover:bg-[#00B8C8] hover:text-white"
+                            : "text-slate-400 hover:bg-[rgba(0,184,200,0.12)] hover:text-white"
                         }
                       >
                         <Link to={item.url} className="flex items-center gap-2.5">
@@ -79,7 +82,7 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-slate-800 px-3 py-3">
+        <SidebarFooter className="border-t border-white/10 px-3 py-3">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate text-xs text-slate-400">{user?.email}</p>
@@ -87,7 +90,7 @@ export function AppSidebar() {
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              className="h-7 w-7 text-slate-400 hover:bg-[rgba(0,184,200,0.12)] hover:text-white"
               onClick={() => signOut()}
               title="Sign out"
             >
