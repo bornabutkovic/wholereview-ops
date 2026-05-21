@@ -669,12 +669,14 @@ function ProductMatchBody({
   userId: string | null;
   onResolved: () => void;
 }) {
-  const payload: ProductMatchPayload & { item_id?: string | null } =
+  const payload: ProductMatchPayload =
     item.payload && typeof item.payload === "object"
-      ? (item.payload as ProductMatchPayload & { item_id?: string | null })
+      ? (item.payload as ProductMatchPayload)
       : {};
 
-  const rawRef = payload.raw_product_ref ?? "";
+  const rawInput =
+    payload.raw_input ?? payload.raw_product_ref ?? item.description ?? "";
+  const partnerId = payload.partner_id ?? null;
   const matchSource = payload.match_source ?? null;
   const confidence =
     typeof payload.mapping_confidence === "number" ? payload.mapping_confidence : null;
@@ -697,13 +699,14 @@ function ProductMatchBody({
       toast.error("Select an SKU first");
       return;
     }
-    if (!rawRef) {
-      toast.error("Missing raw_product_ref in payload");
+    if (!rawInput) {
+      toast.error("Missing raw_input in payload");
       return;
     }
     try {
       await confirm.mutateAsync({
-        rawInput: rawRef,
+        rawInput,
+        partnerId,
         npSkuId: selectedSkuId,
         itemId,
         reviewItemId: item.id,
@@ -718,13 +721,14 @@ function ProductMatchBody({
   };
 
   const handleReject = async () => {
-    if (!rawRef) {
-      toast.error("Missing raw_product_ref in payload");
+    if (!rawInput) {
+      toast.error("Missing raw_input in payload");
       return;
     }
     try {
       await reject.mutateAsync({
-        rawInput: rawRef,
+        rawInput,
+        partnerId,
         reviewItemId: item.id,
         userEmail,
       });
