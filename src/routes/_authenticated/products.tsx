@@ -47,8 +47,8 @@ interface SkuRow {
   hr_approval_no: string | null;
   eu_approval_no: string | null;
   np_product:
-    | { name: string | null; brand: string | null; inn: string | null }
-    | { name: string | null; brand: string | null; inn: string | null }[]
+    | { brand: string | null; inn: string | null }
+    | { brand: string | null; inn: string | null }[]
     | null;
 }
 
@@ -60,7 +60,6 @@ interface Sku {
   status: string | null;
   hr_approval_no: string | null;
   eu_approval_no: string | null;
-  name: string | null;
   brand: string | null;
   inn: string | null;
 }
@@ -84,7 +83,7 @@ function useSkus() {
       const { data, error } = await supabase
         .from("np_sku")
         .select(
-          "np_sku_id, pack_description, origin_country, gtin_ean, status, hr_approval_no, eu_approval_no, np_product:np_product_id(name, brand, inn)",
+          "np_sku_id, pack_description, origin_country, gtin_ean, status, hr_approval_no, eu_approval_no, np_product:np_product_id(brand, inn)",
         )
         .order("np_sku_id", { ascending: true })
         .limit(5000);
@@ -99,7 +98,6 @@ function useSkus() {
           status: r.status,
           hr_approval_no: r.hr_approval_no,
           eu_approval_no: r.eu_approval_no,
-          name: p?.name ?? null,
           brand: p?.brand ?? null,
           inn: p?.inn ?? null,
         };
@@ -172,7 +170,7 @@ function ProductsPage() {
       if (!q) return true;
       return (
         s.np_sku_id.toLowerCase().includes(q) ||
-        (s.name ?? "").toLowerCase().includes(q)
+        productName(s).toLowerCase().includes(q)
       );
     });
   }, [data, search, statusFilter]);
