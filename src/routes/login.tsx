@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import npLogo from "@/assets/np-logo.png";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
+
 
 function LoginPage() {
   const { user, loading, signIn, signUp } = useAuth();
@@ -55,17 +57,22 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-sm">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500 text-sm font-bold text-white">
-            N
-          </div>
-          <div>
-            <h1 className="text-base font-semibold">Novo Pharma</h1>
-            <p className="text-xs text-muted-foreground">Operations dashboard</p>
-          </div>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex justify-center">
+          <img
+            src={npLogo}
+            alt="Novo Pharma"
+            className="w-auto object-contain"
+            style={{ maxHeight: 56 }}
+          />
         </div>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-[0_1px_4px_rgba(27,42,74,0.06)]">
+          <div className="mb-5">
+            <h1 className="text-lg font-bold text-foreground">Welcome back</h1>
+            <p className="mt-1 text-xs text-muted-foreground">Operations dashboard</p>
+          </div>
+
 
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="space-y-1.5">
