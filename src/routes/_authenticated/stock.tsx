@@ -34,27 +34,27 @@ export const Route = createFileRoute("/_authenticated/stock")({
 // ---------------------------------------------------------------------------
 
 interface RawBatch {
-  id: string;
+  batch_id: string;
   np_sku_id: string | null;
   lot_number: string | null;
   expiry_date: string | null;
   qty_initial: number | null;
   qty_unit: string | null;
   status: string | null;
-  received_date: string | null;
+  received_at: string | null;
   supplier_partner_id: string | null;
   np_sku:
-    | { np_product: { name: string | null } | { name: string | null }[] | null }
-    | { np_product: { name: string | null } | { name: string | null }[] | null }[]
+    | { np_product: { brand: string | null; inn: string | null } | { brand: string | null; inn: string | null }[] | null }
+    | { np_product: { brand: string | null; inn: string | null } | { brand: string | null; inn: string | null }[] | null }[]
     | null;
   partner:
-    | { name: string | null; code: string | null }
-    | { name: string | null; code: string | null }[]
+    | { name: string | null; partner_id: string }
+    | { name: string | null; partner_id: string }[]
     | null;
 }
 
 interface Batch {
-  id: string;
+  batch_id: string;
   np_sku_id: string | null;
   product_name: string | null;
   supplier_name: string | null;
@@ -64,7 +64,7 @@ interface Batch {
   qty_initial: number | null;
   qty_unit: string | null;
   status: string | null;
-  received_date: string | null;
+  received_at: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,9 +121,9 @@ function useBatches() {
       const { data, error } = await supabase
         .from("batch")
         .select(
-          "id, np_sku_id, lot_number, expiry_date, qty_initial, qty_unit, status, received_date, supplier_partner_id, np_sku:np_sku_id(np_product:np_product_id(name)), partner:supplier_partner_id(name, code)",
+          "batch_id, np_sku_id, lot_number, expiry_date, qty_initial, qty_unit, status, received_at, supplier_partner_id, np_sku:np_sku_id(np_product:np_product_id(brand, inn)), partner:supplier_partner_id(partner_id, name)",
         )
-        .order("received_date", { ascending: false, nullsFirst: false })
+        .order("received_at", { ascending: false, nullsFirst: false })
         .limit(2000);
       if (error) throw error;
       return ((data ?? []) as RawBatch[]).map((r) => {
@@ -135,17 +135,17 @@ function useBatches() {
           : null;
         const sup = Array.isArray(r.partner) ? r.partner[0] : r.partner;
         return {
-          id: r.id,
+          batch_id: r.batch_id,
           np_sku_id: r.np_sku_id,
-          product_name: prod?.name ?? null,
+          product_name: [prod?.brand, prod?.inn ? `(${prod.inn})` : null].filter(Boolean).join(" ") || null,
           supplier_name: sup?.name ?? null,
-          supplier_code: sup?.code ?? null,
+          supplier_code: sup?.partner_id ?? null,
           lot_number: r.lot_number,
           expiry_date: r.expiry_date,
           qty_initial: r.qty_initial,
           qty_unit: r.qty_unit,
           status: r.status,
-          received_date: r.received_date,
+          received_at: r.received_at,
         };
       });
     },
