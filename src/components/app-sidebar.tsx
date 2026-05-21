@@ -7,6 +7,7 @@ import {
   Tag,
   Users,
   BarChart3,
+  ShoppingCart,
   LogOut,
 } from "lucide-react";
 import {
