@@ -711,7 +711,6 @@ function ProductMatchBody({
         itemId,
         reviewItemId: item.id,
         userId,
-        userId,
       });
       toast.success("Mapping confirmed");
       onResolved();
