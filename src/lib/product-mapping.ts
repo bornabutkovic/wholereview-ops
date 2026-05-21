@@ -132,7 +132,7 @@ export function useAssignPartner() {
           // Step 4: fetch unmatched items
           const { data: items, error: itemsErr } = await supabase
             .from("request_items")
-            .select("id, incoming_request_id, raw_product_ref, raw_code")
+            .select("id, incoming_request_id, raw_product_ref")
             .in("incoming_request_id", requestIds)
             .is("np_sku_id", null);
           if (itemsErr) throw itemsErr;
@@ -146,7 +146,6 @@ export function useAssignPartner() {
               id: string;
               incoming_request_id: string;
               raw_product_ref: string | null;
-              raw_code: string | null;
             };
 
             // Step 5: call match-product edge function
@@ -161,7 +160,6 @@ export function useAssignPartner() {
                 },
                 body: JSON.stringify({
                   raw_product_ref: it.raw_product_ref,
-                  raw_code: it.raw_code,
                   partner_id: args.partnerId,
                 }),
               });
@@ -243,8 +241,7 @@ export function useConfirmMapping() {
         .update({
           status: "CONFIRMED",
           np_sku_id: args.npSkuId,
-          confirmed_at: nowIso,
-          confirmed_by: args.userId,
+          updated_at: nowIso,
         })
         .eq("raw_input", args.rawInput);
       updateQuery = args.partnerId
@@ -260,8 +257,7 @@ export function useConfirmMapping() {
           partner_id: args.partnerId,
           np_sku_id: args.npSkuId,
           status: "CONFIRMED",
-          confirmed_at: nowIso,
-          confirmed_by: args.userId,
+          updated_at: nowIso,
         });
         if (insertErr) throw insertErr;
       }
