@@ -87,7 +87,7 @@ export interface AssignPartnerArgs {
   fromAddress: string | null;
   emailLogId: string | null;
   reviewItemId: string;
-  userEmail: string | null;
+  userId: string | null;
 }
 
 export interface AssignPartnerResult {
@@ -206,7 +206,7 @@ export function useAssignPartner() {
         id: args.reviewItemId,
         status: "RESOLVED",
         note: `Linked to partner: ${args.partnerName}`,
-        userEmail: args.userEmail,
+        userId: args.userId,
       });
 
       return { matched, sentToReview };
@@ -220,7 +220,6 @@ export interface ConfirmMappingArgs {
   npSkuId: string;
   itemId?: string | null;
   reviewItemId: string;
-  userEmail: string | null;
   userId: string | null;
 }
 
@@ -270,7 +269,7 @@ export function useConfirmMapping() {
         id: args.reviewItemId,
         status: "RESOLVED",
         note: `SKU confirmed: ${args.npSkuId}`,
-        userEmail: args.userEmail,
+        userId: args.userId,
       });
     },
   });
@@ -280,7 +279,7 @@ export interface RejectMappingArgs {
   rawInput: string;
   partnerId: string | null;
   reviewItemId: string;
-  userEmail: string | null;
+  userId: string | null;
 }
 
 export function useRejectMapping() {
@@ -298,7 +297,7 @@ export function useRejectMapping() {
         id: args.reviewItemId,
         status: "RESOLVED",
         note: "Mapping rejected",
-        userEmail: args.userEmail,
+        userId: args.userId,
       });
     },
   });
