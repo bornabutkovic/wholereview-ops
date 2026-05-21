@@ -57,8 +57,8 @@ interface RawSkuRow {
   np_sku_id: string;
   pack_description: string | null;
   np_product:
-    | { brand: string | null; inn: string | null }
-    | { brand: string | null; inn: string | null }[]
+    | { brand: string | null; inn: string | null; name?: string | null }
+    | { brand: string | null; inn: string | null; name?: string | null }[]
     | null;
 }
 
@@ -70,6 +70,7 @@ function normalizeSku(row: unknown): NpSkuDetails {
     pack_description: r.pack_description,
     brand: product?.brand ?? null,
     inn: product?.inn ?? null,
+    name: product?.name ?? null,
   };
 }
 
