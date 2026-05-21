@@ -370,17 +370,15 @@ function ResolveDialog(props: ResolveDialogProps) {
 // Generic fallback body
 // ---------------------------------------------------------------------------
 
-function GenericBody({
-  item,
-  readOnly,
-  userId,
-  onResolved,
-}: {
+type GenericBodyProps = {
   item: ReviewItem;
   readOnly: boolean;
   userId: string | null;
   onResolved: () => void;
-}) {
+};
+
+function GenericBody(props: GenericBodyProps) {
+  const { item, readOnly, userId, onResolved } = props;
   const [note, setNote] = useState("");
   const mutation = useMutation({
     mutationFn: (status: "RESOLVED" | "DISMISSED") =>
@@ -461,15 +459,14 @@ function GenericBody({
 // PARTNER_UNKNOWN
 // ---------------------------------------------------------------------------
 
-function PartnerUnknownBody({
-  item,
-  userId,
-  onResolved,
-}: {
+type PartnerUnknownBodyProps = {
   item: ReviewItem;
   userId: string | null;
   onResolved: () => void;
-}) {
+};
+
+function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
+  const { item, userId, onResolved } = props;
   const partners = usePartners({ buyersOnly: true });
   const assign = useAssignPartner();
   const [partnerId, setPartnerId] = useState<string | null>(null);
