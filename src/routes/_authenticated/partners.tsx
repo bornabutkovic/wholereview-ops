@@ -288,10 +288,10 @@ function PartnerDetailSheet(props: {
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Details
                 </h3>
-                <DetailRow icon={Hash} label="Code" value={partner.code} />
+                <DetailRow icon={Hash} label="Code" value={partner.partner_id} />
                 <DetailRow icon={MapPin} label="Country" value={partner.country} />
                 <DetailRow icon={Mail} label="Email" value={partner.contact_email} />
-                <DetailRow icon={Building2} label="Phone" value={partner.contact_phone} />
+                <DetailRow icon={FileText} label="Notes" value={partner.notes} />
                 <div className="flex gap-1.5 pt-1">
                   {partner.is_buyer && (
                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -301,6 +301,11 @@ function PartnerDetailSheet(props: {
                   {partner.is_supplier && (
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                       Supplier
+                    </Badge>
+                  )}
+                  {partner.is_mah && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      MAH
                     </Badge>
                   )}
                 </div>
