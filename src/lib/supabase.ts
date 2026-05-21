@@ -1,10 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 const SUPABASE_URL = "https://hinseieocikbszmyflyh.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbnNlaWVvY2lrYnN6bXlmbHloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTcxOTgsImV4cCI6MjA5MDI3MzE5OH0.mVvJ4t1BwtaMWGhQoU5GGPJHsmlJ8Ao8LXoJydoul4A";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -57,13 +58,11 @@ export interface NpSkuDetails {
   pack_description: string | null;
   brand: string | null;
   inn: string | null;
-  name: string | null;
 }
 
 export interface Partner {
   partner_id: string;
-  code: string;
-  name: string | null;
+  name: string;
   contact_email: string | null;
-  is_buyer: boolean | null;
+  is_buyer: boolean;
 }
