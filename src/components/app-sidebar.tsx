@@ -36,10 +36,11 @@ const items = [
   { title: "Enquiries", url: "/enquiries", icon: MessageSquare },
   { title: "Review Queue", url: "/review-queue", icon: ListChecks },
   { title: "Suppliers", url: "/suppliers", icon: Truck },
+  { title: "Partners", url: "/partners", icon: Users },
   { title: "Stock", url: "/stock", icon: Package },
   { title: "Prices", url: "/prices", icon: Tag },
-  { title: "Partners", url: "/partners", icon: Users },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
+
 ];
 
 export function AppSidebar() {
