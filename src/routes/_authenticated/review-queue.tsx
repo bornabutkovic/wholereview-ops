@@ -886,7 +886,7 @@ function SkuCombobox({
             <CommandEmpty>No SKU found.</CommandEmpty>
             <CommandGroup>
               {skus.map((s) => {
-                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
+                const text = `${s.np_sku_id} ${s.name ?? ""} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
                 return (
                   <CommandItem
                     key={s.np_sku_id}
