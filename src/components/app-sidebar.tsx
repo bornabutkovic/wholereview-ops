@@ -8,6 +8,7 @@ import {
   Users,
   BarChart3,
   ShoppingCart,
+  MessageSquare,
   LogOut,
 } from "lucide-react";
 import {
