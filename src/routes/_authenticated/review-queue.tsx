@@ -837,17 +837,15 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
   );
 }
 
-function SkuCombobox({
-  skus,
-  loading,
-  value,
-  onChange,
-}: {
+type SkuComboboxProps = {
   skus: NpSkuDetails[];
   loading: boolean;
   value: string | null;
   onChange: (id: string) => void;
-}) {
+};
+
+function SkuCombobox(props: SkuComboboxProps) {
+  const { skus, loading, value, onChange } = props;
   const [open, setOpen] = useState(false);
   const selected = skus.find((s) => s.np_sku_id === value) ?? null;
   const label = (s: NpSkuDetails) =>
