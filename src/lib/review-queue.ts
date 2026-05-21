@@ -24,7 +24,7 @@ export async function resolveReviewItem(params: {
   id: string;
   status: "RESOLVED" | "DISMISSED";
   note: string;
-  userEmail: string | null;
+  userId: string | null;
 }): Promise<void> {
   const { data, error } = await supabase
     .from("review_queue")
@@ -32,7 +32,7 @@ export async function resolveReviewItem(params: {
       status: params.status,
       resolution_note: params.note,
       resolved_at: new Date().toISOString(),
-      resolved_by: params.userEmail,
+      resolved_by: params.userId,
     })
     .eq("id", params.id)
     .select("id");
