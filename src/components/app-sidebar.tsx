@@ -8,6 +8,7 @@ import {
   Users,
   BarChart3,
   ShoppingCart,
+  MessageSquare,
   LogOut,
 } from "lucide-react";
 import {
@@ -31,6 +32,7 @@ const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Requests", url: "/requests", icon: Inbox },
   { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
+  { title: "Enquiries", url: "/enquiries", icon: MessageSquare },
   { title: "Review Queue", url: "/review-queue", icon: ListChecks },
   { title: "Stock", url: "/stock", icon: Package },
   { title: "Prices", url: "/prices", icon: Tag },
