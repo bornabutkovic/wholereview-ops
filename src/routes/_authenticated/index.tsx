@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_authenticated/")({
 async function countOpenRequests() {
   const { count, error } = await supabase
     .from("incoming_requests")
-    .select("id", { count: "exact", head: true })
+    .select("*", { count: "exact", head: true })
     .in("status", ["NEW", "IN_REVIEW"]);
   if (error) throw error;
   return count ?? 0;
@@ -43,7 +43,7 @@ async function countOpenRequests() {
 async function countReviewQueue() {
   const { count, error } = await supabase
     .from("review_queue")
-    .select("id", { count: "exact", head: true })
+    .select("*", { count: "exact", head: true })
     .eq("status", "OPEN");
   if (error) throw error;
   return count ?? 0;
@@ -70,7 +70,7 @@ async function countBuyerPartners() {
 async function countReceivedBatches() {
   const { count, error } = await supabase
     .from("batch")
-    .select("id", { count: "exact", head: true })
+    .select("*", { count: "exact", head: true })
     .eq("status", "RECEIVED");
   if (error) throw error;
   return count ?? 0;
@@ -79,7 +79,7 @@ async function countReceivedBatches() {
 async function countPendingOffers() {
   const { count, error } = await supabase
     .from("supplier_offers")
-    .select("id", { count: "exact", head: true })
+    .select("*", { count: "exact", head: true })
     .eq("status", "pending_review");
   if (error) throw error;
   return count ?? 0;

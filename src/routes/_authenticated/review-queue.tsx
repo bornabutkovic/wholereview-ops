@@ -505,7 +505,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
     try {
       const result = await assign.mutateAsync({
         partnerId: selectedPartner.partner_id,
-        partnerName: selectedPartner.name ?? selectedPartner.code,
+        partnerName: selectedPartner.name || selectedPartner.partner_id,
         fromAddress: unknownEmail || null,
         emailLogId,
         reviewItemId: item.id,
@@ -583,7 +583,7 @@ function PartnerCombobox(props: PartnerComboboxProps) {
   const [open, setOpen] = useState(false);
   const selected = partners.find((p) => p.partner_id === value) ?? null;
   const labelFor = (p: Partner) => {
-    const primary = p.name ?? p.code;
+    const primary = p.name || p.partner_id;
     return p.contact_email ? `${primary} — ${p.contact_email}` : primary;
   };
 
@@ -618,7 +618,7 @@ function PartnerCombobox(props: PartnerComboboxProps) {
             <CommandGroup>
               {partners.map((p) => {
                 const label = labelFor(p);
-                const searchText = `${p.name ?? ""} ${p.code} ${p.contact_email ?? ""}`;
+                const searchText = `${p.name ?? ""} ${p.partner_id} ${p.contact_email ?? ""}`;
                 return (
                   <CommandItem
                     key={p.partner_id}
@@ -849,7 +849,7 @@ function SkuCombobox(props: SkuComboboxProps) {
   const [open, setOpen] = useState(false);
   const selected = skus.find((s) => s.np_sku_id === value) ?? null;
   const label = (s: NpSkuDetails) =>
-    s.name ? `${s.np_sku_id} — ${s.name}` : s.np_sku_id;
+    s.brand ? `${s.np_sku_id} — ${s.brand}` : s.np_sku_id;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -877,7 +877,7 @@ function SkuCombobox(props: SkuComboboxProps) {
             <CommandEmpty>No SKU found.</CommandEmpty>
             <CommandGroup>
               {skus.map((s) => {
-                const text = `${s.np_sku_id} ${s.name ?? ""} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
+                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
                 return (
                   <CommandItem
                     key={s.np_sku_id}

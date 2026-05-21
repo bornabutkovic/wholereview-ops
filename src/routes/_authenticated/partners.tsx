@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Search, Eye, Mail, Building2, MapPin, Hash } from "lucide-react";
+import { Search, Eye, Mail, FileText, MapPin, Hash } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
@@ -36,13 +36,15 @@ export const Route = createFileRoute("/_authenticated/partners")({
 
 interface PartnerRow {
   partner_id: string;
-  code: string | null;
-  name: string | null;
+  name: string;
   country: string | null;
   contact_email: string | null;
-  contact_phone: string | null;
-  is_buyer: boolean | null;
-  is_supplier: boolean | null;
+  is_buyer: boolean;
+  is_supplier: boolean;
+  is_mah: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface RequestRow {
@@ -66,13 +68,13 @@ function usePartners(role: Role) {
       const { data, error } = await supabase
         .from("partner")
         .select(
-          "partner_id, code, name, country, contact_email, contact_phone, is_buyer, is_supplier",
+          "partner_id, name, country, contact_email, is_buyer, is_supplier, is_mah, notes, created_at, updated_at",
         )
         .eq(col, true)
         .order("name", { ascending: true })
         .limit(2000);
       if (error) throw error;
-      return (data ?? []) as PartnerRow[];
+      return data ?? [];
     },
   });
 }
@@ -286,10 +288,10 @@ function PartnerDetailSheet(props: {
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Details
                 </h3>
-                <DetailRow icon={Hash} label="Code" value={partner.code} />
+                <DetailRow icon={Hash} label="Code" value={partner.partner_id} />
                 <DetailRow icon={MapPin} label="Country" value={partner.country} />
                 <DetailRow icon={Mail} label="Email" value={partner.contact_email} />
-                <DetailRow icon={Building2} label="Phone" value={partner.contact_phone} />
+                <DetailRow icon={FileText} label="Notes" value={partner.notes} />
                 <div className="flex gap-1.5 pt-1">
                   {partner.is_buyer && (
                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -299,6 +301,11 @@ function PartnerDetailSheet(props: {
                   {partner.is_supplier && (
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                       Supplier
+                    </Badge>
+                  )}
+                  {partner.is_mah && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      MAH
                     </Badge>
                   )}
                 </div>

@@ -113,17 +113,15 @@ const DRAFT_STATUS_FILTERS: { value: DraftStatus | "ALL"; label: string }[] = [
 
 interface EmailLogRow {
   id: string;
-  supplier_code: string | null;
+  partner_id: string | null;
   status: string | null;
-  created_at: string;
-  sent_at: string | null;
-  payload: unknown;
+  received_at: string | null;
 }
 
 interface DraftOrder {
   id: string;
   supplier: string;
-  date: string;
+  date: string | null;
   productsCount: number;
   totalQuantity: number;
   status: DraftStatus;
@@ -153,18 +151,12 @@ function extractItems(payload: unknown): DraftPayloadItem[] {
 }
 
 function normalizeDraft(row: EmailLogRow): DraftOrder {
-  const items = extractItems(row.payload);
-  const totalQty = items.reduce(
-    (acc, it) =>
-      acc + (it.quantity ?? it.qty ?? it.qty_requested ?? 0),
-    0,
-  );
   return {
     id: row.id,
-    supplier: row.supplier_code ?? "—",
-    date: row.sent_at ?? row.created_at,
-    productsCount: items.length,
-    totalQuantity: totalQty,
+    supplier: row.partner_id ?? "—",
+    date: row.received_at,
+    productsCount: 0,
+    totalQuantity: 0,
     status: normalizeDraftStatus(row.status),
   };
 }
@@ -178,10 +170,10 @@ function DraftOrdersTab() {
     queryFn: async (): Promise<DraftOrder[]> => {
       const { data, error } = await supabase
         .from("email_log")
-        .select("id, supplier_code, status, created_at, sent_at, payload")
+        .select("id, partner_id, status, received_at")
         .eq("doc_type", "SUPPLIER_OFFER")
         .eq("direction", "outbound")
-        .order("created_at", { ascending: false })
+        .order("received_at", { ascending: false, nullsFirst: false })
         .limit(500);
       if (error) throw error;
       return ((data ?? []) as unknown as EmailLogRow[]).map(normalizeDraft);
@@ -267,7 +259,7 @@ function DraftOrdersTab() {
                     <SupplierBadge code={d.supplier} />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(d.date), { addSuffix: true })}
+                    {d.date ? formatDistanceToNow(new Date(d.date), { addSuffix: true }) : "—"}
                   </TableCell>
                   <TableCell className="text-right text-[13px] tabular-nums">
                     {d.productsCount}
@@ -340,7 +332,7 @@ const OFFER_STATUS_FILTERS: { value: OfferStatus | "ALL"; label: string }[] = [
 
 interface SupplierOfferRow {
   id: string;
-  supplier_code: string | null;
+  supplier: string;
   raw_product_name: string | null;
   quantity_offered: number | null;
   price_per_unit: number | null;
@@ -375,7 +367,7 @@ function SupplierOffersTab() {
       const { data, error } = await supabase
         .from("supplier_offers")
         .select(
-          "id, supplier_code, raw_product_name, quantity_offered, price_per_unit, currency, expiry_date, expiry_ok, status",
+          "id, supplier, raw_product_name, quantity_offered, price_per_unit, currency, expiry_date, expiry_ok, status",
         )
         .order("id", { ascending: false })
         .limit(500);
@@ -390,7 +382,7 @@ function SupplierOffersTab() {
       if (status !== "ALL" && s !== status) return false;
       if (
         supplier !== "ALL" &&
-        (o.supplier_code ?? "").toUpperCase() !== supplier
+        o.supplier.toUpperCase() !== supplier
       )
         return false;
       if (
@@ -477,7 +469,7 @@ function SupplierOffersTab() {
                 return (
                   <TableRow key={o.id} className="text-sm">
                     <TableCell>
-                      <SupplierBadge code={o.supplier_code} />
+                      <SupplierBadge code={o.supplier} />
                     </TableCell>
                     <TableCell className="max-w-0 truncate text-[13px]">
                       {o.raw_product_name ?? "—"}

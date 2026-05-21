@@ -13,7 +13,7 @@ export function useNpSkuDetails(npSkuId: string | null | undefined) {
     queryFn: async (): Promise<NpSkuDetails | null> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn, name)")
+        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn)")
         .eq("np_sku_id", npSkuId!)
         .maybeSingle();
       if (error) throw error;
@@ -29,7 +29,7 @@ export function useNpSkuList() {
     queryFn: async (): Promise<NpSkuDetails[]> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn, name)")
+        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn)")
         .order("np_sku_id", { ascending: true })
         .limit(2000);
       if (error) throw error;
@@ -45,7 +45,7 @@ export function usePartners(options?: { buyersOnly?: boolean }) {
     queryFn: async (): Promise<Partner[]> => {
       let q = supabase
         .from("partner")
-        .select("partner_id, code, name, contact_email, is_buyer")
+        .select("partner_id, name, contact_email, is_buyer")
         .order("name", { ascending: true })
         .limit(2000);
       if (buyersOnly) q = q.eq("is_buyer", true);
@@ -60,8 +60,8 @@ interface RawSkuRow {
   np_sku_id: string;
   pack_description: string | null;
   np_product:
-    | { brand: string | null; inn: string | null; name?: string | null }
-    | { brand: string | null; inn: string | null; name?: string | null }[]
+    | { brand: string | null; inn: string | null }
+    | { brand: string | null; inn: string | null }[]
     | null;
 }
 
@@ -73,7 +73,6 @@ function normalizeSku(row: unknown): NpSkuDetails {
     pack_description: r.pack_description,
     brand: product?.brand ?? null,
     inn: product?.inn ?? null,
-    name: product?.name ?? null,
   };
 }
 
@@ -133,7 +132,7 @@ export function useAssignPartner() {
           // Step 4: fetch unmatched items
           const { data: items, error: itemsErr } = await supabase
             .from("request_items")
-            .select("id, incoming_request_id, raw_product_ref, raw_code")
+            .select("id, incoming_request_id, raw_product_ref")
             .in("incoming_request_id", requestIds)
             .is("np_sku_id", null);
           if (itemsErr) throw itemsErr;
@@ -147,7 +146,6 @@ export function useAssignPartner() {
               id: string;
               incoming_request_id: string;
               raw_product_ref: string | null;
-              raw_code: string | null;
             };
 
             // Step 5: call match-product edge function
@@ -162,7 +160,6 @@ export function useAssignPartner() {
                 },
                 body: JSON.stringify({
                   raw_product_ref: it.raw_product_ref,
-                  raw_code: it.raw_code,
                   partner_id: args.partnerId,
                 }),
               });
@@ -244,8 +241,7 @@ export function useConfirmMapping() {
         .update({
           status: "CONFIRMED",
           np_sku_id: args.npSkuId,
-          confirmed_at: nowIso,
-          confirmed_by: args.userId,
+          updated_at: nowIso,
         })
         .eq("raw_input", args.rawInput);
       updateQuery = args.partnerId
@@ -261,8 +257,7 @@ export function useConfirmMapping() {
           partner_id: args.partnerId,
           np_sku_id: args.npSkuId,
           status: "CONFIRMED",
-          confirmed_at: nowIso,
-          confirmed_by: args.userId,
+          updated_at: nowIso,
         });
         if (insertErr) throw insertErr;
       }
