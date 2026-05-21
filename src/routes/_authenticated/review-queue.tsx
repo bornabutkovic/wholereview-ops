@@ -290,7 +290,9 @@ function EmptyState() {
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState(props: { message: string; onRetry: () => void }) {
+  const { message, onRetry } = props;
+
   return (
     <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-6 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
@@ -307,17 +309,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function ResolveDialog({
-  item,
-  onClose,
-  onResolved,
-  userId,
-}: {
+type ResolveDialogProps = {
   item: ReviewItem | null;
   onClose: () => void;
   onResolved: () => void;
   userId: string | null;
-}) {
+};
+
+function ResolveDialog(props: ResolveDialogProps) {
+  const { item, onClose, onResolved, userId } = props;
   const readOnly = item?.status !== "OPEN";
   const isProductMatch = item?.category === "PRODUCT_MATCH" && !readOnly;
   const isPartnerUnknown = item?.category === "PARTNER_UNKNOWN" && !readOnly;
@@ -370,17 +370,15 @@ function ResolveDialog({
 // Generic fallback body
 // ---------------------------------------------------------------------------
 
-function GenericBody({
-  item,
-  readOnly,
-  userId,
-  onResolved,
-}: {
+type GenericBodyProps = {
   item: ReviewItem;
   readOnly: boolean;
   userId: string | null;
   onResolved: () => void;
-}) {
+};
+
+function GenericBody(props: GenericBodyProps) {
+  const { item, readOnly, userId, onResolved } = props;
   const [note, setNote] = useState("");
   const mutation = useMutation({
     mutationFn: (status: "RESOLVED" | "DISMISSED") =>
@@ -461,15 +459,14 @@ function GenericBody({
 // PARTNER_UNKNOWN
 // ---------------------------------------------------------------------------
 
-function PartnerUnknownBody({
-  item,
-  userId,
-  onResolved,
-}: {
+type PartnerUnknownBodyProps = {
   item: ReviewItem;
   userId: string | null;
   onResolved: () => void;
-}) {
+};
+
+function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
+  const { item, userId, onResolved } = props;
   const partners = usePartners({ buyersOnly: true });
   const assign = useAssignPartner();
   const [partnerId, setPartnerId] = useState<string | null>(null);
@@ -574,17 +571,15 @@ function PartnerUnknownBody({
   );
 }
 
-function PartnerCombobox({
-  partners,
-  loading,
-  value,
-  onChange,
-}: {
+type PartnerComboboxProps = {
   partners: Partner[];
   loading: boolean;
   value: string | null;
   onChange: (id: string) => void;
-}) {
+};
+
+function PartnerCombobox(props: PartnerComboboxProps) {
+  const { partners, loading, value, onChange } = props;
   const [open, setOpen] = useState(false);
   const selected = partners.find((p) => p.partner_id === value) ?? null;
   const labelFor = (p: Partner) => {
@@ -660,15 +655,14 @@ function extractEmail(text: string): string | null {
 // PRODUCT_MATCH
 // ---------------------------------------------------------------------------
 
-function ProductMatchBody({
-  item,
-  userId,
-  onResolved,
-}: {
+type ProductMatchBodyProps = {
   item: ReviewItem;
   userId: string | null;
   onResolved: () => void;
-}) {
+};
+
+function ProductMatchBody(props: ProductMatchBodyProps) {
+  const { item, userId, onResolved } = props;
   const payload: ProductMatchPayload =
     item.payload && typeof item.payload === "object"
       ? (item.payload as ProductMatchPayload)
@@ -843,17 +837,15 @@ function ProductMatchBody({
   );
 }
 
-function SkuCombobox({
-  skus,
-  loading,
-  value,
-  onChange,
-}: {
+type SkuComboboxProps = {
   skus: NpSkuDetails[];
   loading: boolean;
   value: string | null;
   onChange: (id: string) => void;
-}) {
+};
+
+function SkuCombobox(props: SkuComboboxProps) {
+  const { skus, loading, value, onChange } = props;
   const [open, setOpen] = useState(false);
   const selected = skus.find((s) => s.np_sku_id === value) ?? null;
   const label = (s: NpSkuDetails) =>
