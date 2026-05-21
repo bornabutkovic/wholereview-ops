@@ -13,7 +13,7 @@ export function useNpSkuDetails(npSkuId: string | null | undefined) {
     queryFn: async (): Promise<NpSkuDetails | null> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn)")
+        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn, name)")
         .eq("np_sku_id", npSkuId!)
         .maybeSingle();
       if (error) throw error;
@@ -29,7 +29,7 @@ export function useNpSkuList() {
     queryFn: async (): Promise<NpSkuDetails[]> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn)")
+        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn, name)")
         .order("np_sku_id", { ascending: true })
         .limit(2000);
       if (error) throw error;
