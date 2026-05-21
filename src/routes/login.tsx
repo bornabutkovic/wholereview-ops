@@ -104,10 +104,11 @@ function LoginPage() {
             </p>
           )}
           {info && (
-            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+            <p className="rounded-md bg-[#E8F8FA] px-3 py-2 text-xs text-[#00B8C8]">
               {info}
             </p>
           )}
+
           <Button type="submit" className="w-full" disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
             {mode === "signin" ? "Sign in" : "Create account"}
