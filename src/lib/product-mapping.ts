@@ -110,6 +110,7 @@ export function useAssignPartner() {
 
 export interface ConfirmMappingArgs {
   rawInput: string;
+  partnerId: string | null;
   npSkuId: string;
   itemId?: string | null;
   reviewItemId: string;
@@ -122,23 +123,27 @@ export function useConfirmMapping() {
     mutationFn: async (args: ConfirmMappingArgs) => {
       const nowIso = new Date().toISOString();
 
-      // Try to update an existing learned mapping row first.
-      const { data: updated, error: updateErr } = await supabase
+      // Try to update an existing learned mapping row first, scoped by partner.
+      let updateQuery = supabase
         .from("product_mapping_learned")
         .update({
           status: "CONFIRMED",
+          np_sku_id: args.npSkuId,
           confirmed_at: nowIso,
           confirmed_by: args.userId,
         })
-        .eq("raw_input", args.rawInput)
-        .eq("np_sku_id", args.npSkuId)
-        .select("raw_input");
+        .eq("raw_input", args.rawInput);
+      updateQuery = args.partnerId
+        ? updateQuery.eq("partner_id", args.partnerId)
+        : updateQuery.is("partner_id", null);
+      const { data: updated, error: updateErr } = await updateQuery.select("raw_input");
       if (updateErr) throw updateErr;
 
       // Edge case: no row existed yet — insert one.
       if (!updated || updated.length === 0) {
         const { error: insertErr } = await supabase.from("product_mapping_learned").insert({
           raw_input: args.rawInput,
+          partner_id: args.partnerId,
           np_sku_id: args.npSkuId,
           status: "CONFIRMED",
           confirmed_at: nowIso,
@@ -158,7 +163,7 @@ export function useConfirmMapping() {
       await resolveReviewItem({
         id: args.reviewItemId,
         status: "RESOLVED",
-        note: `Mapping confirmed: ${args.npSkuId}`,
+        note: `SKU confirmed: ${args.npSkuId}`,
         userEmail: args.userEmail,
       });
     },
@@ -167,6 +172,7 @@ export function useConfirmMapping() {
 
 export interface RejectMappingArgs {
   rawInput: string;
+  partnerId: string | null;
   reviewItemId: string;
   userEmail: string | null;
 }
@@ -174,10 +180,12 @@ export interface RejectMappingArgs {
 export function useRejectMapping() {
   return useMutation({
     mutationFn: async (args: RejectMappingArgs) => {
-      const { error } = await supabase
+      let q = supabase
         .from("product_mapping_learned")
         .update({ status: "REJECTED" })
         .eq("raw_input", args.rawInput);
+      q = args.partnerId ? q.eq("partner_id", args.partnerId) : q.is("partner_id", null);
+      const { error } = await q;
       if (error) throw error;
 
       await resolveReviewItem({
