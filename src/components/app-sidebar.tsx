@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import npLogo from "@/assets/np-logo.png";
+
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -44,13 +44,14 @@ export function AppSidebar() {
         <SidebarHeader className="px-4 py-5">
           <div className="flex items-center">
             <img
-              src={npLogo}
+              src="/NP_LOGO.png"
               alt="Novo Pharma"
-              className="max-h-9 w-auto object-contain brightness-0 invert"
+              className="w-auto object-contain"
               style={{ maxHeight: 36 }}
             />
           </div>
         </SidebarHeader>
+
 
         <SidebarContent className="px-2">
           <SidebarGroup>
