@@ -9,7 +9,6 @@ import {
   BarChart3,
   ShoppingCart,
   LogOut,
-  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
