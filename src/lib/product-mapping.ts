@@ -87,7 +87,7 @@ export interface AssignPartnerArgs {
   fromAddress: string | null;
   emailLogId: string | null;
   reviewItemId: string;
-  userEmail: string | null;
+  userId: string | null;
 }
 
 export interface AssignPartnerResult {
