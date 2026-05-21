@@ -256,7 +256,7 @@ function ReviewQueuePage() {
             qc.invalidateQueries({ queryKey: ["review-queue"] });
             setActive(null);
           }}
-          userEmail={user?.email ?? null}
+          userId={user?.email ?? null}
           userId={user?.id ?? null}
         />
 
@@ -312,13 +312,13 @@ function ResolveDialog({
   item,
   onClose,
   onResolved,
-  userEmail,
+  userId,
   userId,
 }: {
   item: ReviewItem | null;
   onClose: () => void;
   onResolved: () => void;
-  userEmail: string | null;
+  userId: string | null;
   userId: string | null;
 }) {
   const readOnly = item?.status !== "OPEN";
@@ -347,21 +347,21 @@ function ResolveDialog({
         {item && isProductMatch ? (
           <ProductMatchBody
             item={item}
-            userEmail={userEmail}
+            userId={userId}
             userId={userId}
             onResolved={onResolved}
           />
         ) : item && isPartnerUnknown ? (
           <PartnerUnknownBody
             item={item}
-            userEmail={userEmail}
+            userId={userId}
             onResolved={onResolved}
           />
         ) : item ? (
           <GenericBody
             item={item}
             readOnly={readOnly}
-            userEmail={userEmail}
+            userId={userId}
             onResolved={onResolved}
           />
         ) : null}
@@ -377,18 +377,18 @@ function ResolveDialog({
 function GenericBody({
   item,
   readOnly,
-  userEmail,
+  userId,
   onResolved,
 }: {
   item: ReviewItem;
   readOnly: boolean;
-  userEmail: string | null;
+  userId: string | null;
   onResolved: () => void;
 }) {
   const [note, setNote] = useState("");
   const mutation = useMutation({
     mutationFn: (status: "RESOLVED" | "DISMISSED") =>
-      resolveReviewItem({ id: item.id, status, note: note.trim(), userEmail }),
+      resolveReviewItem({ id: item.id, status, note: note.trim(), userId }),
     onSuccess: (_d, status) => {
       toast.success(status === "RESOLVED" ? "Marked as resolved" : "Dismissed");
       setNote("");
@@ -467,11 +467,11 @@ function GenericBody({
 
 function PartnerUnknownBody({
   item,
-  userEmail,
+  userId,
   onResolved,
 }: {
   item: ReviewItem;
-  userEmail: string | null;
+  userId: string | null;
   onResolved: () => void;
 }) {
   const partners = usePartners({ buyersOnly: true });
@@ -493,7 +493,7 @@ function PartnerUnknownBody({
         id: item.id,
         status: "DISMISSED",
         note: "Dismissed (no partner assigned)",
-        userEmail,
+        userId,
       }),
     onSuccess: () => {
       toast.success("Dismissed");
@@ -516,7 +516,7 @@ function PartnerUnknownBody({
         fromAddress: unknownEmail || null,
         emailLogId,
         reviewItemId: item.id,
-        userEmail,
+        userId,
       });
       toast.success(
         `Partner linked. ${result.matched} products matched, ${result.sentToReview} sent to review queue.`,
@@ -666,12 +666,12 @@ function extractEmail(text: string): string | null {
 
 function ProductMatchBody({
   item,
-  userEmail,
+  userId,
   userId,
   onResolved,
 }: {
   item: ReviewItem;
-  userEmail: string | null;
+  userId: string | null;
   userId: string | null;
   onResolved: () => void;
 }) {
@@ -716,7 +716,7 @@ function ProductMatchBody({
         npSkuId: selectedSkuId,
         itemId,
         reviewItemId: item.id,
-        userEmail,
+        userId,
         userId,
       });
       toast.success("Mapping confirmed");
@@ -736,7 +736,7 @@ function ProductMatchBody({
         rawInput,
         partnerId,
         reviewItemId: item.id,
-        userEmail,
+        userId,
       });
       toast.success("Mapping rejected");
       onResolved();

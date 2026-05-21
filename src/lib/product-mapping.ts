@@ -220,7 +220,7 @@ export interface ConfirmMappingArgs {
   npSkuId: string;
   itemId?: string | null;
   reviewItemId: string;
-  userEmail: string | null;
+  userId: string | null;
   userId: string | null;
 }
 
@@ -280,7 +280,7 @@ export interface RejectMappingArgs {
   rawInput: string;
   partnerId: string | null;
   reviewItemId: string;
-  userEmail: string | null;
+  userId: string | null;
 }
 
 export function useRejectMapping() {
