@@ -510,7 +510,7 @@ function PartnerUnknownBody({
       return;
     }
     try {
-      await assign.mutateAsync({
+      const result = await assign.mutateAsync({
         partnerId: selectedPartner.partner_id,
         partnerName: selectedPartner.name ?? selectedPartner.code,
         fromAddress: unknownEmail || null,
@@ -518,7 +518,9 @@ function PartnerUnknownBody({
         reviewItemId: item.id,
         userEmail,
       });
-      toast.success(`Linked to ${selectedPartner.name ?? selectedPartner.code}`);
+      toast.success(
+        `Partner linked. ${result.matched} products matched, ${result.sentToReview} sent to review queue.`,
+      );
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
