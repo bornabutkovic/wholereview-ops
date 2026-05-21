@@ -206,7 +206,7 @@ export function useAssignPartner() {
         id: args.reviewItemId,
         status: "RESOLVED",
         note: `Linked to partner: ${args.partnerName}`,
-        userEmail: args.userEmail,
+        userId: args.userId,
       });
 
       return { matched, sentToReview };
@@ -270,7 +270,7 @@ export function useConfirmMapping() {
         id: args.reviewItemId,
         status: "RESOLVED",
         note: `SKU confirmed: ${args.npSkuId}`,
-        userEmail: args.userEmail,
+        userId: args.userId,
       });
     },
   });
@@ -298,7 +298,7 @@ export function useRejectMapping() {
         id: args.reviewItemId,
         status: "RESOLVED",
         note: "Mapping rejected",
-        userEmail: args.userEmail,
+        userId: args.userId,
       });
     },
   });
