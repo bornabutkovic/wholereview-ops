@@ -113,17 +113,15 @@ const DRAFT_STATUS_FILTERS: { value: DraftStatus | "ALL"; label: string }[] = [
 
 interface EmailLogRow {
   id: string;
-  supplier_code: string | null;
+  partner_id: string | null;
   status: string | null;
-  created_at: string;
-  sent_at: string | null;
-  payload: unknown;
+  received_at: string | null;
 }
 
 interface DraftOrder {
   id: string;
   supplier: string;
-  date: string;
+  date: string | null;
   productsCount: number;
   totalQuantity: number;
   status: DraftStatus;
@@ -153,18 +151,12 @@ function extractItems(payload: unknown): DraftPayloadItem[] {
 }
 
 function normalizeDraft(row: EmailLogRow): DraftOrder {
-  const items = extractItems(row.payload);
-  const totalQty = items.reduce(
-    (acc, it) =>
-      acc + (it.quantity ?? it.qty ?? it.qty_requested ?? 0),
-    0,
-  );
   return {
     id: row.id,
-    supplier: row.supplier_code ?? "—",
-    date: row.sent_at ?? row.created_at,
-    productsCount: items.length,
-    totalQuantity: totalQty,
+    supplier: row.partner_id ?? "—",
+    date: row.received_at,
+    productsCount: 0,
+    totalQuantity: 0,
     status: normalizeDraftStatus(row.status),
   };
 }
@@ -178,10 +170,10 @@ function DraftOrdersTab() {
     queryFn: async (): Promise<DraftOrder[]> => {
       const { data, error } = await supabase
         .from("email_log")
-        .select("id, supplier_code, status, created_at, sent_at, payload")
+        .select("id, partner_id, status, received_at")
         .eq("doc_type", "SUPPLIER_OFFER")
         .eq("direction", "outbound")
-        .order("created_at", { ascending: false })
+        .order("received_at", { ascending: false, nullsFirst: false })
         .limit(500);
       if (error) throw error;
       return ((data ?? []) as unknown as EmailLogRow[]).map(normalizeDraft);
