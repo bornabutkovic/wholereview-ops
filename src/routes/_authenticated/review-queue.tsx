@@ -312,12 +312,10 @@ function ResolveDialog({
   onClose,
   onResolved,
   userId,
-  userId,
 }: {
   item: ReviewItem | null;
   onClose: () => void;
   onResolved: () => void;
-  userId: string | null;
   userId: string | null;
 }) {
   const readOnly = item?.status !== "OPEN";
