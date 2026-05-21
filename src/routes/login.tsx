@@ -59,14 +59,12 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex justify-center">
-          <img
-            src="/NP_LOGO.png"
-            alt="Novo Pharma"
-            className="w-auto object-contain"
-            style={{ maxHeight: 56 }}
-          />
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="mb-3 h-1 w-10 rounded-full bg-[#00B8C8]" />
+          <h1 className="text-[24px] font-bold leading-none text-[#1B2A4A]">Novo Pharma</h1>
+          <p className="mt-1.5 text-[13px] text-[#6B7280]">Pharmaceutical Company</p>
         </div>
+
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-[0_1px_4px_rgba(27,42,74,0.06)]">
           <div className="mb-5">
