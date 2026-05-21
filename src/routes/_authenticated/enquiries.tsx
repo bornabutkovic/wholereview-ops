@@ -29,16 +29,51 @@ export const Route = createFileRoute("/_authenticated/enquiries")({
   component: EnquiriesPage,
 });
 
-type EnquiryStatus = "new" | "in_progress" | "closed";
+const ENQUIRY_DOC_TYPES = ["ENQUIRY", "ENQUIRY_LIST", "PRICE_REQUEST_XLS"] as const;
 
-interface RequestItemRow {
-  id?: string | null;
-}
+type RequestStatus =
+  | "NEW"
+  | "IN_REVIEW"
+  | "OFFERED"
+  | "CONFIRMED"
+  | "PARTIAL"
+  | "REJECTED"
+  | "CLOSED";
+
+const STATUS_STYLES: Record<RequestStatus, string> = {
+  NEW: "bg-blue-50 text-blue-700 border-blue-200",
+  IN_REVIEW: "bg-yellow-50 text-yellow-800 border-yellow-200",
+  OFFERED: "bg-purple-50 text-purple-700 border-purple-200",
+  CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  PARTIAL: "bg-orange-50 text-orange-700 border-orange-200",
+  REJECTED: "bg-rose-50 text-rose-700 border-rose-200",
+  CLOSED: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+const STATUS_LABELS: Record<RequestStatus, string> = {
+  NEW: "new",
+  IN_REVIEW: "in review",
+  OFFERED: "offered",
+  CONFIRMED: "confirmed",
+  PARTIAL: "partial",
+  REJECTED: "rejected",
+  CLOSED: "closed",
+};
+
+const STATUS_FILTERS: { value: RequestStatus | "ALL"; label: string }[] = [
+  { value: "ALL", label: "All statuses" },
+  { value: "NEW", label: "New" },
+  { value: "IN_REVIEW", label: "In review" },
+  { value: "OFFERED", label: "Offered" },
+  { value: "CONFIRMED", label: "Confirmed" },
+  { value: "PARTIAL", label: "Partial" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "CLOSED", label: "Closed" },
+];
 
 interface PartnerRow {
   partner_id: string;
-  code: string | null;
-  name?: string | null;
+  name: string | null;
 }
 
 interface IncomingRequestRow {
@@ -50,7 +85,7 @@ interface IncomingRequestRow {
   created_at: string;
   received_at?: string | null;
   partner: PartnerRow | PartnerRow[] | null;
-  request_items: RequestItemRow[] | null;
+  request_items: { id: string }[] | null;
 }
 
 interface Enquiry {
@@ -59,41 +94,29 @@ interface Enquiry {
   dateReceived: string;
   subject: string;
   productsCount: number;
-  status: EnquiryStatus;
+  status: RequestStatus;
 }
 
-const STATUS_STYLES: Record<EnquiryStatus, string> = {
-  new: "bg-blue-50 text-blue-700 border-blue-200",
-  in_progress: "bg-amber-50 text-amber-800 border-amber-200",
-  closed: "bg-slate-100 text-slate-600 border-slate-200",
-};
-
-const STATUS_LABELS: Record<EnquiryStatus, string> = {
-  new: "new",
-  in_progress: "in progress",
-  closed: "closed",
-};
-
-const STATUS_FILTERS: { value: EnquiryStatus | "ALL"; label: string }[] = [
-  { value: "ALL", label: "All statuses" },
-  { value: "new", label: "New" },
-  { value: "in_progress", label: "In progress" },
-  { value: "closed", label: "Closed" },
-];
-
-function normalizeStatus(s: string | null | undefined): EnquiryStatus {
-  const v = (s ?? "").toLowerCase().replace(/[\s-]/g, "_");
-  if (v === "in_progress" || v === "inprogress") return "in_progress";
-  if (v === "closed" || v === "resolved" || v === "done") return "closed";
-  return "new";
+function normalizeStatus(s: string | null | undefined): RequestStatus {
+  const v = (s ?? "").toUpperCase();
+  if (
+    v === "NEW" ||
+    v === "IN_REVIEW" ||
+    v === "OFFERED" ||
+    v === "CONFIRMED" ||
+    v === "PARTIAL" ||
+    v === "REJECTED" ||
+    v === "CLOSED"
+  )
+    return v;
+  return "NEW";
 }
 
 function normalize(row: IncomingRequestRow): Enquiry {
   const partner = Array.isArray(row.partner) ? row.partner[0] : row.partner;
-  const buyer = partner?.name?.trim() || partner?.code?.trim() || "—";
   return {
     id: row.id,
-    buyer,
+    buyer: partner?.name?.trim() || "—",
     dateReceived: row.received_at ?? row.created_at,
     subject: row.subject ?? "—",
     productsCount: (row.request_items ?? []).length,
@@ -102,7 +125,7 @@ function normalize(row: IncomingRequestRow): Enquiry {
 }
 
 function EnquiriesPage() {
-  const [status, setStatus] = useState<EnquiryStatus | "ALL">("ALL");
+  const [status, setStatus] = useState<RequestStatus | "ALL">("ALL");
   const [search, setSearch] = useState("");
 
   const query = useQuery({
@@ -111,9 +134,9 @@ function EnquiriesPage() {
       const { data, error } = await supabase
         .from("incoming_requests")
         .select(
-          "id, partner_id, doc_type, status, subject, created_at, received_at, partner:partner_id(partner_id, code, name), request_items(id)",
+          "id, partner_id, doc_type, status, subject, created_at, received_at, partner:partner_id(partner_id, name), request_items!incoming_request_id(id)",
         )
-        .eq("doc_type", "ENQUIRY")
+        .in("doc_type", ENQUIRY_DOC_TYPES as unknown as string[])
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -125,7 +148,8 @@ function EnquiriesPage() {
     const items = query.data ?? [];
     return items.filter((e) => {
       if (status !== "ALL" && e.status !== status) return false;
-      if (search.trim() && !e.buyer.toLowerCase().includes(search.toLowerCase())) return false;
+      if (search.trim() && !e.buyer.toLowerCase().includes(search.toLowerCase()))
+        return false;
       return true;
     });
   }, [query.data, status, search]);
@@ -144,7 +168,7 @@ function EnquiriesPage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-2 border-b px-6 py-3">
-        <Select value={status} onValueChange={(v) => setStatus(v as EnquiryStatus | "ALL")}>
+        <Select value={status} onValueChange={(v) => setStatus(v as RequestStatus | "ALL")}>
           <SelectTrigger className="h-8 w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
@@ -186,7 +210,7 @@ function EnquiriesPage() {
                 <TableHead className="w-[160px] text-xs">Date Received</TableHead>
                 <TableHead className="text-xs">Subject</TableHead>
                 <TableHead className="w-[100px] text-right text-xs">Products</TableHead>
-                <TableHead className="w-[130px] text-xs">Status</TableHead>
+                <TableHead className="w-[140px] text-xs">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
