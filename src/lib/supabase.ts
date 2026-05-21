@@ -37,8 +37,11 @@ export interface ReviewItem {
 }
 
 export interface ProductMatchPayload {
+  raw_input?: string | null;
   raw_product_ref?: string | null;
   raw_code?: string | null;
+  partner_id?: string | null;
+  item_id?: string | null;
   match_source?: string | null;
   mapping_confidence?: number | null;
   match_reason?: string | null;
