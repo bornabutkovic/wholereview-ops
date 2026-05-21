@@ -4,6 +4,7 @@ import {
   Inbox,
   ListChecks,
   Package,
+  Boxes,
   Tag,
   Users,
   BarChart3,
@@ -12,6 +13,7 @@ import {
   Truck,
   LogOut,
 } from "lucide-react";
+
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +39,8 @@ const items = [
   { title: "Review Queue", url: "/review-queue", icon: ListChecks },
   { title: "Suppliers", url: "/suppliers", icon: Truck },
   { title: "Partners", url: "/partners", icon: Users },
+  { title: "Products", url: "/products", icon: Boxes },
+
   { title: "Stock", url: "/stock", icon: Package },
   { title: "Prices", url: "/prices", icon: Tag },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
