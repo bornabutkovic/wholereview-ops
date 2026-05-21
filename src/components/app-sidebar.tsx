@@ -42,15 +42,28 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <div className="flex h-full flex-col bg-[#1B2A4A] text-slate-300">
         <SidebarHeader className="px-4 py-5">
-          <div className="flex items-center">
-            <img
-              src="/NP_LOGO.png"
-              alt="Novo Pharma"
-              className="w-auto object-contain"
-              style={{ maxHeight: 36 }}
-            />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#00B8C8]">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </div>
+            <div className="min-w-0 leading-tight">
+              <p className="text-sm font-bold tracking-tight text-white">Novo Pharma</p>
+              <p className="text-[11px] text-[#94A3B8]">Pharmaceutical Company</p>
+            </div>
           </div>
         </SidebarHeader>
+
 
 
         <SidebarContent className="px-2">
