@@ -52,6 +52,7 @@ export interface NpSkuDetails {
   pack_description: string | null;
   brand: string | null;
   inn: string | null;
+  name: string | null;
 }
 
 export interface Partner {
