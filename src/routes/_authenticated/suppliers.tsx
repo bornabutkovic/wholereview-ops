@@ -340,7 +340,7 @@ const OFFER_STATUS_FILTERS: { value: OfferStatus | "ALL"; label: string }[] = [
 
 interface SupplierOfferRow {
   id: string;
-  supplier_code: string | null;
+  supplier: string;
   raw_product_name: string | null;
   quantity_offered: number | null;
   price_per_unit: number | null;
@@ -375,7 +375,7 @@ function SupplierOffersTab() {
       const { data, error } = await supabase
         .from("supplier_offers")
         .select(
-          "id, supplier_code, raw_product_name, quantity_offered, price_per_unit, currency, expiry_date, expiry_ok, status",
+          "id, supplier, raw_product_name, quantity_offered, price_per_unit, currency, expiry_date, expiry_ok, status",
         )
         .order("id", { ascending: false })
         .limit(500);
@@ -390,7 +390,7 @@ function SupplierOffersTab() {
       if (status !== "ALL" && s !== status) return false;
       if (
         supplier !== "ALL" &&
-        (o.supplier_code ?? "").toUpperCase() !== supplier
+        o.supplier.toUpperCase() !== supplier
       )
         return false;
       if (
@@ -477,7 +477,7 @@ function SupplierOffersTab() {
                 return (
                   <TableRow key={o.id} className="text-sm">
                     <TableCell>
-                      <SupplierBadge code={o.supplier_code} />
+                      <SupplierBadge code={o.supplier} />
                     </TableCell>
                     <TableCell className="max-w-0 truncate text-[13px]">
                       {o.raw_product_name ?? "—"}
