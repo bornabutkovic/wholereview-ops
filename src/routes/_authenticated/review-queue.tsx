@@ -663,11 +663,9 @@ function extractEmail(text: string): string | null {
 function ProductMatchBody({
   item,
   userId,
-  userId,
   onResolved,
 }: {
   item: ReviewItem;
-  userId: string | null;
   userId: string | null;
   onResolved: () => void;
 }) {
