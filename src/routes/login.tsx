@@ -114,17 +114,19 @@ function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          {mode === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button
-            type="button"
-            onClick={switchMode}
-            className="font-medium text-blue-600 hover:underline"
-          >
-            {mode === "signin" ? "Sign up" : "Sign in"}
-          </button>
-        </p>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            {mode === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
+            <button
+              type="button"
+              onClick={switchMode}
+              className="font-medium text-[#00B8C8] hover:underline"
+            >
+              {mode === "signin" ? "Sign up" : "Sign in"}
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+
