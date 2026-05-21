@@ -130,68 +130,75 @@ export function useAssignPartner() {
         const requestIds = (reqs ?? []).map((r) => r.id as string);
 
         if (requestIds.length > 0) {
-          // Step 2: fetch unmatched items
+          // Step 4: fetch unmatched items
           const { data: items, error: itemsErr } = await supabase
             .from("request_items")
-            .select("id, incoming_request_id, raw_product_ref")
+            .select("id, incoming_request_id, raw_product_ref, raw_code")
             .in("incoming_request_id", requestIds)
             .is("np_sku_id", null);
           if (itemsErr) throw itemsErr;
 
+          const SUPABASE_URL = "https://hinseieocikbszmyflyh.supabase.co";
+          const SUPABASE_ANON_KEY =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbnNlaWVvY2lrYnN6bXlmbHloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTcxOTgsImV4cCI6MjA5MDI3MzE5OH0.mVvJ4t1BwtaMWGhQoU5GGPJHsmlJ8Ao8LXoJydoul4A";
+
           for (const item of items ?? []) {
-            const rawRef = (item as { raw_product_ref: string | null }).raw_product_ref;
-            if (!rawRef) {
-              const { error: rqErr } = await supabase.from("review_queue").insert({
-                email_id: args.emailLogId,
-                request_id: item.incoming_request_id,
-                item_id: item.id,
-                category: "PRODUCT_MATCH",
-                status: "OPEN",
-                description: "Neprepoznat produkt: (no reference)",
-                payload: {
-                  raw_product_ref: null,
-                  item_id: item.id,
-                  email_log_id: args.emailLogId,
-                  partner_id: args.partnerId,
+            const it = item as {
+              id: string;
+              incoming_request_id: string;
+              raw_product_ref: string | null;
+              raw_code: string | null;
+            };
+
+            // Step 5: call match-product edge function
+            let matchedSku: string | null = null;
+            let confidence = 0;
+            try {
+              const res = await fetch(`${SUPABASE_URL}/functions/v1/match-product`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
                 },
+                body: JSON.stringify({
+                  raw_product_ref: it.raw_product_ref,
+                  raw_code: it.raw_code,
+                  partner_id: args.partnerId,
+                }),
               });
-              if (rqErr) throw rqErr;
-              sentToReview += 1;
-              continue;
+              if (res.ok) {
+                const json = (await res.json()) as { np_sku_id?: string | null; confidence?: number };
+                matchedSku = json.np_sku_id ?? null;
+                confidence = typeof json.confidence === "number" ? json.confidence : 0;
+              }
+            } catch {
+              // fall through to review queue
             }
 
-            // Step 3: lookup alias for this partner
-            const { data: alias, error: aliasErr } = await supabase
-              .from("product_code_alias")
-              .select("np_sku_id")
-              .eq("partner_id", args.partnerId)
-              .or(`external_name.ilike.${rawRef},external_code.ilike.${rawRef}`)
-              .limit(1)
-              .maybeSingle();
-            if (aliasErr) throw aliasErr;
-
-            if (alias?.np_sku_id) {
-              // Step 4: assign sku to the item
+            if (matchedSku && confidence >= 0.85) {
+              // Step 6: auto-match
               const { error: updErr } = await supabase
                 .from("request_items")
-                .update({ np_sku_id: alias.np_sku_id })
-                .eq("id", item.id);
+                .update({ np_sku_id: matchedSku })
+                .eq("id", it.id);
               if (updErr) throw updErr;
               matched += 1;
             } else {
-              // Step 5: send to review queue
+              // Step 7: send to review queue
               const { error: rqErr } = await supabase.from("review_queue").insert({
                 email_id: args.emailLogId,
-                request_id: item.incoming_request_id,
-                item_id: item.id,
+                request_id: it.incoming_request_id,
+                item_id: it.id,
                 category: "PRODUCT_MATCH",
                 status: "OPEN",
-                description: `Neprepoznat produkt: ${rawRef}`,
+                description: `Neprepoznat produkt: ${it.raw_product_ref ?? "(no reference)"}`,
+                suggested_value: matchedSku,
                 payload: {
-                  raw_product_ref: rawRef,
-                  item_id: item.id,
+                  raw_product_ref: it.raw_product_ref,
+                  item_id: it.id,
                   email_log_id: args.emailLogId,
                   partner_id: args.partnerId,
+                  confidence,
                 },
               });
               if (rqErr) throw rqErr;
@@ -199,7 +206,7 @@ export function useAssignPartner() {
             }
           }
         }
-      }
+
 
       // Step 6: resolve the current PARTNER_UNKNOWN review item
       await resolveReviewItem({
