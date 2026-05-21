@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import npLogo from "@/assets/np-logo.png";
+
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -61,12 +61,13 @@ function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex justify-center">
           <img
-            src={npLogo}
+            src="/NP_LOGO.png"
             alt="Novo Pharma"
             className="w-auto object-contain"
             style={{ maxHeight: 56 }}
           />
         </div>
+
         <div className="rounded-xl border border-border bg-card p-6 shadow-[0_1px_4px_rgba(27,42,74,0.06)]">
           <div className="mb-5">
             <h1 className="text-lg font-bold text-foreground">Welcome back</h1>
