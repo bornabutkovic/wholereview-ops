@@ -45,7 +45,7 @@ export function usePartners(options?: { buyersOnly?: boolean }) {
     queryFn: async (): Promise<Partner[]> => {
       let q = supabase
         .from("partner")
-        .select("partner_id, code, name, contact_email, is_buyer")
+        .select("partner_id, name, contact_email, is_buyer")
         .order("name", { ascending: true })
         .limit(2000);
       if (buyersOnly) q = q.eq("is_buyer", true);
@@ -60,8 +60,8 @@ interface RawSkuRow {
   np_sku_id: string;
   pack_description: string | null;
   np_product:
-    | { brand: string | null; inn: string | null; name?: string | null }
-    | { brand: string | null; inn: string | null; name?: string | null }[]
+    | { brand: string | null; inn: string | null }
+    | { brand: string | null; inn: string | null }[]
     | null;
 }
 
@@ -73,7 +73,6 @@ function normalizeSku(row: unknown): NpSkuDetails {
     pack_description: r.pack_description,
     brand: product?.brand ?? null,
     inn: product?.inn ?? null,
-    name: product?.name ?? null,
   };
 }
 
