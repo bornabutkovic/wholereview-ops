@@ -571,17 +571,15 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
   );
 }
 
-function PartnerCombobox({
-  partners,
-  loading,
-  value,
-  onChange,
-}: {
+type PartnerComboboxProps = {
   partners: Partner[];
   loading: boolean;
   value: string | null;
   onChange: (id: string) => void;
-}) {
+};
+
+function PartnerCombobox(props: PartnerComboboxProps) {
+  const { partners, loading, value, onChange } = props;
   const [open, setOpen] = useState(false);
   const selected = partners.find((p) => p.partner_id === value) ?? null;
   const labelFor = (p: Partner) => {
@@ -657,15 +655,14 @@ function extractEmail(text: string): string | null {
 // PRODUCT_MATCH
 // ---------------------------------------------------------------------------
 
-function ProductMatchBody({
-  item,
-  userId,
-  onResolved,
-}: {
+type ProductMatchBodyProps = {
   item: ReviewItem;
   userId: string | null;
   onResolved: () => void;
-}) {
+};
+
+function ProductMatchBody(props: ProductMatchBodyProps) {
+  const { item, userId, onResolved } = props;
   const payload: ProductMatchPayload =
     item.payload && typeof item.payload === "object"
       ? (item.payload as ProductMatchPayload)
