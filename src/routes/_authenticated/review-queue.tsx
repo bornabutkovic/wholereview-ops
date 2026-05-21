@@ -290,7 +290,9 @@ function EmptyState() {
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState(props: { message: string; onRetry: () => void }) {
+  const { message, onRetry } = props;
+
   return (
     <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-6 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
@@ -307,17 +309,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function ResolveDialog({
-  item,
-  onClose,
-  onResolved,
-  userId,
-}: {
+type ResolveDialogProps = {
   item: ReviewItem | null;
   onClose: () => void;
   onResolved: () => void;
   userId: string | null;
-}) {
+};
+
+function ResolveDialog(props: ResolveDialogProps) {
+  const { item, onClose, onResolved, userId } = props;
   const readOnly = item?.status !== "OPEN";
   const isProductMatch = item?.category === "PRODUCT_MATCH" && !readOnly;
   const isPartnerUnknown = item?.category === "PARTNER_UNKNOWN" && !readOnly;
