@@ -753,7 +753,7 @@ function ProductMatchBody({
             Buyer napisao
           </p>
           <p className="text-sm font-medium text-foreground">
-            {rawRef || <span className="text-muted-foreground">—</span>}
+            {rawInput || <span className="text-muted-foreground">—</span>}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {matchSource && (
