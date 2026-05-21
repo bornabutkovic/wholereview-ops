@@ -512,7 +512,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
         userId,
       });
       toast.success(
-        `Partner linked. ${result.matched} products matched, ${result.sentToReview} sent to review queue.`,
+        `Partner linked. ${result.matched} products auto-matched, ${result.sentToReview} sent to review queue.`,
       );
       onResolved();
     } catch (e) {
