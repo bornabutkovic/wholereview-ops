@@ -4,6 +4,7 @@ import {
   Inbox,
   ListChecks,
   Package,
+  Boxes,
   Tag,
   Users,
   BarChart3,
@@ -12,6 +13,7 @@ import {
   Truck,
   LogOut,
 } from "lucide-react";
+
 import {
   Sidebar,
   SidebarContent,
