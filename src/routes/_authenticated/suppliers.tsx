@@ -113,80 +113,54 @@ const DRAFT_STATUS_FILTERS: { value: DraftStatus | "ALL"; label: string }[] = [
 
 interface EmailLogRow {
   id: string;
-  partner_id: string | null;
-  status: string | null;
+  from_address: string | null;
+  to_address: string | null;
+  subject: string | null;
   received_at: string | null;
+  parse_status: string | null;
+  doc_type: string | null;
+  has_attachments: boolean | null;
 }
 
 interface DraftOrder {
   id: string;
   supplier: string;
+  subject: string;
   date: string | null;
-  productsCount: number;
-  totalQuantity: number;
-  status: DraftStatus;
-}
-
-function normalizeDraftStatus(s: string | null | undefined): DraftStatus {
-  const v = (s ?? "").toLowerCase();
-  if (v === "sent") return "sent";
-  if (v === "confirmed") return "confirmed";
-  return "draft";
-}
-
-interface DraftPayloadItem {
-  quantity?: number | null;
-  qty?: number | null;
-  qty_requested?: number | null;
-}
-
-function extractItems(payload: unknown): DraftPayloadItem[] {
-  if (!payload || typeof payload !== "object") return [];
-  const p = payload as Record<string, unknown>;
-  const candidates = [p.items, p.lines, p.products];
-  for (const c of candidates) {
-    if (Array.isArray(c)) return c as DraftPayloadItem[];
-  }
-  return [];
+  parseStatus: string;
+  docType: string;
+  hasAttachments: boolean;
 }
 
 function normalizeDraft(row: EmailLogRow): DraftOrder {
   return {
     id: row.id,
-    supplier: row.partner_id ?? "—",
+    supplier: row.from_address ?? row.to_address ?? "—",
+    subject: row.subject ?? "—",
     date: row.received_at,
-    productsCount: 0,
-    totalQuantity: 0,
-    status: normalizeDraftStatus(row.status),
+    parseStatus: row.parse_status ?? "—",
+    docType: row.doc_type ?? "—",
+    hasAttachments: !!row.has_attachments,
   };
 }
 
 function DraftOrdersTab() {
-  const [status, setStatus] = useState<DraftStatus | "ALL">("ALL");
-  const [supplier, setSupplier] = useState<SupplierCode | "ALL">("ALL");
-
   const query = useQuery({
     queryKey: ["supplier-draft-orders"],
     queryFn: async (): Promise<DraftOrder[]> => {
       const { data, error } = await supabase
         .from("email_log")
-        .select("id, partner_id, status, received_at")
-        .eq("doc_type", "SUPPLIER_OFFER")
-        .eq("direction", "outbound")
+        .select(
+          "id, from_address, to_address, subject, received_at, parse_status, doc_type, has_attachments",
+        )
         .order("received_at", { ascending: false, nullsFirst: false })
-        .limit(500);
+        .limit(50);
       if (error) throw error;
       return ((data ?? []) as unknown as EmailLogRow[]).map(normalizeDraft);
     },
   });
 
-  const filtered = useMemo(() => {
-    return (query.data ?? []).filter((d) => {
-      if (status !== "ALL" && d.status !== status) return false;
-      if (supplier !== "ALL" && d.supplier.toUpperCase() !== supplier) return false;
-      return true;
-    });
-  }, [query.data, status, supplier]);
+  const filtered = query.data ?? [];
 
   return (
     <div className="flex h-full flex-col">
