@@ -136,6 +136,7 @@ function normalize(row: IncomingRequestRow): Enquiry {
 function EnquiriesPage() {
   const [status, setStatus] = useState<RequestStatus | "ALL">("ALL");
   const [search, setSearch] = useState("");
+  const [active, setActive] = useState<Enquiry | null>(null);
 
   const query = useQuery({
     queryKey: ["enquiries"],
