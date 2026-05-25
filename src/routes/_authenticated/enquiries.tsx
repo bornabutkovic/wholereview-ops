@@ -228,7 +228,11 @@ function EnquiriesPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((e) => (
-                <TableRow key={e.id} className="text-sm">
+                <TableRow
+                  key={e.id}
+                  className="cursor-pointer text-sm hover:bg-muted/50"
+                  onClick={() => setActive(e)}
+                >
                   <TableCell className="text-[13px] font-medium text-foreground">
                     {e.buyer}
                   </TableCell>
@@ -253,6 +257,22 @@ function EnquiriesPage() {
           </Table>
         )}
       </div>
+
+      <RequestDetailSheet
+        context={
+          active
+            ? {
+                id: active.id,
+                partnerName: active.buyer,
+                title: active.subject,
+                titleLabel: "Subject",
+                status: active.status,
+                dateReceived: active.dateReceived,
+              }
+            : null
+        }
+        onOpenChange={(o) => !o && setActive(null)}
+      />
     </div>
   );
 }
