@@ -81,10 +81,16 @@ interface IncomingRequestRow {
   partner_id: string | null;
   doc_type: string | null;
   status: string | null;
-  subject: string | null;
+  po_number: string | null;
+  notes: string | null;
   created_at: string;
   received_at?: string | null;
+  email_log_id: string | null;
   partner: PartnerRow | PartnerRow[] | null;
+  email_log:
+    | { subject: string | null }
+    | { subject: string | null }[]
+    | null;
   request_items: { id: string }[] | null;
 }
 
@@ -114,11 +120,17 @@ function normalizeStatus(s: string | null | undefined): RequestStatus {
 
 function normalize(row: IncomingRequestRow): Enquiry {
   const partner = Array.isArray(row.partner) ? row.partner[0] : row.partner;
+  const email = Array.isArray(row.email_log) ? row.email_log[0] : row.email_log;
+  const subject =
+    email?.subject?.trim() ||
+    row.po_number?.trim() ||
+    row.notes?.trim() ||
+    "—";
   return {
     id: row.id,
     buyer: partner?.name?.trim() || "—",
     dateReceived: row.received_at ?? row.created_at,
-    subject: row.subject ?? "—",
+    subject,
     productsCount: (row.request_items ?? []).length,
     status: normalizeStatus(row.status),
   };
@@ -134,7 +146,7 @@ function EnquiriesPage() {
       const { data, error } = await supabase
         .from("incoming_requests")
         .select(
-          "id, partner_id, doc_type, status, subject, created_at, received_at, partner:partner_id(partner_id, name), request_items!incoming_request_id(id)",
+          "id, partner_id, doc_type, status, po_number, notes, created_at, received_at, email_log_id, partner:partner_id(partner_id, name), email_log:email_log_id(subject), request_items!incoming_request_id(id)",
         )
         .in("doc_type", ENQUIRY_DOC_TYPES as unknown as string[])
         .order("created_at", { ascending: false })
