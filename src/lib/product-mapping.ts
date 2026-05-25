@@ -128,7 +128,7 @@ export function useAssignPartner() {
           .from("incoming_requests")
           .update({ partner_id: args.partnerId })
           .eq("email_log_id", args.emailLogId)
-          .select("id");
+          .select("id, doc_type");
         if (reqErr) throw reqErr;
 
         requestIds = (reqs ?? []).map((r) => r.id as string);
@@ -137,6 +137,20 @@ export function useAssignPartner() {
           partnerId: args.partnerId,
           requestIds,
         });
+
+        // Step C: backfill email_log.doc_type from the request's parsed doc_type
+        const parsedDocType =
+          (reqs ?? [])
+            .map((r) => (r as { doc_type: string | null }).doc_type)
+            .find((d) => d && d.trim().length > 0) ?? null;
+        if (parsedDocType) {
+          const { error: dtErr } = await supabase
+            .from("email_log")
+            .update({ doc_type: parsedDocType })
+            .eq("id", args.emailLogId);
+          if (dtErr) throw dtErr;
+          console.log("[assignPartner] email_log.doc_type set to:", parsedDocType);
+        }
       }
 
       {
