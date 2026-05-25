@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { RequestDetailSheet, type RequestDetailContext } from "@/components/request-detail-sheet";
+import { RequestDetailSheet } from "@/components/request-detail-sheet";
 
 export const Route = createFileRoute("/_authenticated/purchase-orders")({
   component: PurchaseOrdersPage,
