@@ -106,19 +106,24 @@ export function useAssignPartner() {
         if (error) throw error;
       }
 
-      if (args.emailLogId) {
-        const { error: elErr } = await supabase
-          .from("email_log")
-          .update({ partner_id: args.partnerId })
-          .eq("id", args.emailLogId);
-        if (elErr) throw elErr;
-      }
-
       let matched = 0;
       let sentToReview = 0;
+      let requestIds: string[] = [];
 
       if (args.emailLogId) {
-        // Step 1: link incoming_requests to the partner
+        // Step A: link email_log to the partner
+        const { data: emailRows, error: elErr } = await supabase
+          .from("email_log")
+          .update({ partner_id: args.partnerId })
+          .eq("id", args.emailLogId)
+          .select("id");
+        if (elErr) throw elErr;
+        console.log("[assignPartner] email_log updated:", emailRows?.length ?? 0, "row(s)", {
+          emailLogId: args.emailLogId,
+          partnerId: args.partnerId,
+        });
+
+        // Step B: link incoming_requests to the partner
         const { data: reqs, error: reqErr } = await supabase
           .from("incoming_requests")
           .update({ partner_id: args.partnerId })
@@ -126,7 +131,15 @@ export function useAssignPartner() {
           .select("id");
         if (reqErr) throw reqErr;
 
-        const requestIds = (reqs ?? []).map((r) => r.id as string);
+        requestIds = (reqs ?? []).map((r) => r.id as string);
+        console.log("[assignPartner] incoming_requests updated:", requestIds.length, "row(s)", {
+          emailLogId: args.emailLogId,
+          partnerId: args.partnerId,
+          requestIds,
+        });
+      }
+
+      {
 
         if (requestIds.length > 0) {
           // Step 4: fetch unmatched items
