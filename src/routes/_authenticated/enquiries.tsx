@@ -74,6 +74,8 @@ const STATUS_FILTERS: { value: RequestStatus | "ALL"; label: string }[] = [
 interface PartnerRow {
   partner_id: string;
   name: string | null;
+  contact_email: string | null;
+  country: string | null;
 }
 
 interface IncomingRequestRow {
@@ -82,14 +84,13 @@ interface IncomingRequestRow {
   doc_type: string | null;
   status: string | null;
   po_number: string | null;
-  notes: string | null;
+  is_urgent: boolean | null;
+  cycle_ref: string | null;
   created_at: string;
-  received_at?: string | null;
-  email_log_id: string | null;
   partner: PartnerRow | PartnerRow[] | null;
   email_log:
-    | { subject: string | null }
-    | { subject: string | null }[]
+    | { subject: string | null; received_at: string | null }
+    | { subject: string | null; received_at: string | null }[]
     | null;
   request_items: { id: string }[] | null;
 }
@@ -121,16 +122,11 @@ function normalizeStatus(s: string | null | undefined): RequestStatus {
 function normalize(row: IncomingRequestRow): Enquiry {
   const partner = Array.isArray(row.partner) ? row.partner[0] : row.partner;
   const email = Array.isArray(row.email_log) ? row.email_log[0] : row.email_log;
-  const subject =
-    email?.subject?.trim() ||
-    row.po_number?.trim() ||
-    row.notes?.trim() ||
-    "—";
   return {
     id: row.id,
-    buyer: partner?.name?.trim() || "—",
-    dateReceived: row.received_at ?? row.created_at,
-    subject,
+    buyer: partner?.name?.trim() || "Unknown",
+    dateReceived: email?.received_at ?? row.created_at,
+    subject: email?.subject?.trim() || "—",
     productsCount: (row.request_items ?? []).length,
     status: normalizeStatus(row.status),
   };
@@ -146,7 +142,10 @@ function EnquiriesPage() {
       const { data, error } = await supabase
         .from("incoming_requests")
         .select(
-          "id, partner_id, doc_type, status, po_number, notes, created_at, received_at, email_log_id, partner:partner_id(partner_id, name), email_log:email_log_id(subject), request_items!incoming_request_id(id)",
+          `id, doc_type, status, po_number, partner_id, is_urgent, cycle_ref, created_at,
+           partner:partner_id (partner_id, name, contact_email, country),
+           email_log:email_log_id (subject, received_at),
+           request_items (id, np_sku_id, raw_product_ref, qty_requested)`,
         )
         .in("doc_type", ENQUIRY_DOC_TYPES as unknown as string[])
         .order("created_at", { ascending: false })
