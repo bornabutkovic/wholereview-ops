@@ -88,6 +88,8 @@ interface RequestItemRow {
 interface PartnerRow {
   partner_id: string;
   name: string | null;
+  country: string | null;
+  contact_email: string | null;
 }
 
 interface IncomingRequestRow {
@@ -95,6 +97,11 @@ interface IncomingRequestRow {
   partner_id: string | null;
   doc_type: string | null;
   status: string | null;
+  po_number: string | null;
+  notes: string | null;
+  is_urgent: boolean | null;
+  cycle_ref: string | null;
+  payment_confirmed: boolean | null;
   created_at: string;
   received_at?: string | null;
   partner: PartnerRow | PartnerRow[] | null;
@@ -104,6 +111,11 @@ interface IncomingRequestRow {
 interface PurchaseOrder {
   id: string;
   buyer: string;
+  country: string | null;
+  contactEmail: string | null;
+  poNumber: string | null;
+  notes: string | null;
+  isUrgent: boolean;
   dateReceived: string;
   productsCount: number;
   totalQuantity: number;
@@ -134,6 +146,11 @@ function normalize(row: IncomingRequestRow): PurchaseOrder {
   return {
     id: row.id,
     buyer,
+    country: partner?.country ?? null,
+    contactEmail: partner?.contact_email ?? null,
+    poNumber: row.po_number,
+    notes: row.notes,
+    isUrgent: !!row.is_urgent,
     dateReceived: row.received_at ?? row.created_at,
     productsCount: items.length,
     totalQuantity: totalQty,
@@ -153,7 +170,7 @@ function PurchaseOrdersPage() {
       const { data, error } = await supabase
         .from("incoming_requests")
         .select(
-          "id, partner_id, doc_type, status, created_at, received_at, partner:partner_id(partner_id, name), request_items!incoming_request_id(id, qty_requested, np_sku_id, raw_product_ref)",
+          "id, partner_id, doc_type, status, po_number, notes, is_urgent, cycle_ref, payment_confirmed, created_at, received_at, partner:partner_id(partner_id, name, country, contact_email), request_items!incoming_request_id(id, qty_requested, np_sku_id, raw_product_ref)",
         )
         .in("doc_type", PO_DOC_TYPES as unknown as string[])
         .order("created_at", { ascending: false })
