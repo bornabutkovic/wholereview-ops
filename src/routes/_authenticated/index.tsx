@@ -70,8 +70,7 @@ async function countBuyerPartners() {
 async function countReceivedBatches() {
   const { count, error } = await supabase
     .from("batch")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "RECEIVED");
+    .select("*", { count: "exact", head: true });
   if (error) throw error;
   return count ?? 0;
 }
@@ -212,6 +211,7 @@ interface EmailRow {
   subject: string | null;
   received_at: string | null;
   parse_status: string | null;
+  doc_type: string | null;
 }
 
 function useRecentEmails() {
@@ -220,7 +220,7 @@ function useRecentEmails() {
     queryFn: async (): Promise<EmailRow[]> => {
       const { data, error } = await supabase
         .from("email_log")
-        .select("id, from_address, subject, received_at, parse_status")
+        .select("id, from_address, subject, received_at, parse_status, doc_type")
         .order("received_at", { ascending: false, nullsFirst: false })
         .limit(10);
       if (error) throw error;
@@ -257,6 +257,7 @@ function RecentActivity() {
           <TableRow>
             <TableHead className="w-[220px]">From</TableHead>
             <TableHead>Subject</TableHead>
+            <TableHead className="w-[110px]">Doc Type</TableHead>
             <TableHead className="w-[150px]">Date</TableHead>
             <TableHead className="w-[120px]">Parse Status</TableHead>
           </TableRow>
@@ -265,20 +266,20 @@ function RecentActivity() {
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <TableRow key={i}>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                   <Skeleton className="h-5 w-full" />
                 </TableCell>
               </TableRow>
             ))
           ) : error ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-sm text-destructive">
+              <TableCell colSpan={5} className="text-center text-sm text-destructive">
                 {(error as Error).message}
               </TableCell>
             </TableRow>
           ) : (data ?? []).length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+              <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
                 No recent emails
               </TableCell>
             </TableRow>
@@ -288,6 +289,15 @@ function RecentActivity() {
                 <TableCell className="truncate text-xs">{e.from_address ?? "—"}</TableCell>
                 <TableCell className="truncate text-sm font-medium">
                   {e.subject ?? "—"}
+                </TableCell>
+                <TableCell>
+                  {e.doc_type ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      {e.doc_type}
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {e.received_at
