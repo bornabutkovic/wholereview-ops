@@ -248,9 +248,9 @@ function PurchaseOrdersPage() {
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
                 <TableHead className="text-xs">Buyer</TableHead>
-                <TableHead className="w-[160px] text-xs">Date Received</TableHead>
+                <TableHead className="w-[160px] text-xs">Date</TableHead>
+                <TableHead className="w-[140px] text-xs">PO Number</TableHead>
                 <TableHead className="w-[100px] text-right text-xs">Products</TableHead>
-                <TableHead className="w-[130px] text-right text-xs">Total Qty</TableHead>
                 <TableHead className="w-[140px] text-xs">Status</TableHead>
                 <TableHead className="w-[100px] text-xs"></TableHead>
               </TableRow>
@@ -264,11 +264,9 @@ function PurchaseOrdersPage() {
                   <TableCell className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(po.dateReceived), { addSuffix: true })}
                   </TableCell>
+                  <TableCell className="font-mono text-xs">{po.poNumber ?? "—"}</TableCell>
                   <TableCell className="text-right text-[13px] tabular-nums">
                     {po.productsCount}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums">
-                    {po.totalQuantity.toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge
