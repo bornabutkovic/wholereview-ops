@@ -333,11 +333,12 @@ function DetailsDialog({
               <Stat label="Status" value={STATUS_LABELS[po.status]} />
             </div>
 
-            {po.notes && (
+            {po.subject && (
               <p className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                {po.notes}
+                {po.subject}
               </p>
             )}
+
 
 
             <div className="space-y-1.5">
