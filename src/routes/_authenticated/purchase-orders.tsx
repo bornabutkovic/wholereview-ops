@@ -24,13 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { RequestDetailSheet, type RequestDetailContext } from "@/components/request-detail-sheet";
 
 export const Route = createFileRoute("/_authenticated/purchase-orders")({
   component: PurchaseOrdersPage,
