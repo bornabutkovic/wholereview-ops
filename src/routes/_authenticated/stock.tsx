@@ -94,11 +94,11 @@ function SupplierBadge({ code }: { code: string | null }) {
 function StatusBadge({ status }: { status: string | null }) {
   const s = (status ?? "").toUpperCase();
   const styles: Record<string, string> = {
-    AVAILABLE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    RESERVED: "bg-amber-50 text-amber-700 border-amber-200",
-    DEPLETED: "bg-slate-100 text-slate-600 border-slate-200",
-    EXPIRED: "bg-red-50 text-red-700 border-red-200",
-    QUARANTINE: "bg-orange-50 text-orange-700 border-orange-200",
+    RECEIVED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    ALLOCATED: "bg-blue-50 text-blue-700 border-blue-200",
+    SHIPPED: "bg-purple-50 text-purple-700 border-purple-200",
+    RETURNED: "bg-amber-50 text-amber-700 border-amber-200",
+    DESTROYED: "bg-red-50 text-red-700 border-red-200",
   };
   return (
     <Badge
