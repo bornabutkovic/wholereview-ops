@@ -96,20 +96,6 @@ function SuppliersPage() {
 // Tab 1 — Draft Orders
 // ---------------------------------------------------------------------------
 
-type DraftStatus = "draft" | "sent" | "confirmed";
-
-const DRAFT_STATUS_STYLES: Record<DraftStatus, string> = {
-  draft: "bg-slate-100 text-slate-700 border-slate-200",
-  sent: "bg-blue-50 text-blue-700 border-blue-200",
-  confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-};
-
-const DRAFT_STATUS_FILTERS: { value: DraftStatus | "ALL"; label: string }[] = [
-  { value: "ALL", label: "All statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "confirmed", label: "Confirmed" },
-];
 
 interface EmailLogRow {
   id: string;
