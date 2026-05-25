@@ -24,13 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { RequestDetailSheet } from "@/components/request-detail-sheet";
 
 export const Route = createFileRoute("/_authenticated/purchase-orders")({
   component: PurchaseOrdersPage,
@@ -257,7 +251,11 @@ function PurchaseOrdersPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((po) => (
-                <TableRow key={po.id} className="text-sm">
+                <TableRow
+                  key={po.id}
+                  className="cursor-pointer text-sm hover:bg-muted/50"
+                  onClick={() => setActive(po)}
+                >
                   <TableCell className="text-[13px] font-medium text-foreground">
                     {po.buyer}
                   </TableCell>
@@ -277,7 +275,14 @@ function PurchaseOrdersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="outline" onClick={() => setActive(po)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActive(po);
+                      }}
+                    >
                       View
                     </Button>
                   </TableCell>
@@ -288,106 +293,21 @@ function PurchaseOrdersPage() {
         )}
       </div>
 
-      <DetailsDialog po={active} onClose={() => setActive(null)} />
-    </div>
-  );
-}
-
-function DetailsDialog({
-  po,
-  onClose,
-}: {
-  po: PurchaseOrder | null;
-  onClose: () => void;
-}) {
-  return (
-    <Dialog open={!!po} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[640px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            Purchase Order
-            {po?.poNumber && (
-              <span className="font-mono text-xs text-muted-foreground">
-                · {po.poNumber}
-              </span>
-            )}
-            {po?.isUrgent && (
-              <Badge variant="outline" className="border-red-200 bg-red-50 text-[10px] text-red-700">
-                URGENT
-              </Badge>
-            )}
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            {po?.buyer}
-            {po?.country ? ` · ${po.country}` : ""} ·{" "}
-            {po && formatDistanceToNow(new Date(po.dateReceived), { addSuffix: true })}
-            {po?.contactEmail ? ` · ${po.contactEmail}` : ""}
-          </DialogDescription>
-        </DialogHeader>
-
-        {po && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <Stat label="Products" value={String(po.productsCount)} />
-              <Stat label="Total quantity" value={po.totalQuantity.toLocaleString()} />
-              <Stat label="Status" value={STATUS_LABELS[po.status]} />
-            </div>
-
-            {po.subject && (
-              <p className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                {po.subject}
-              </p>
-            )}
-
-
-
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium">Items</p>
-              <div className="max-h-[320px] overflow-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Product</TableHead>
-                      <TableHead className="w-[100px] text-right text-xs">Qty</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {po.items.map((it, idx) => (
-                      <TableRow key={it.id ?? idx} className="text-sm">
-                        <TableCell className="text-[13px]">
-                          {it.np_sku_id ?? it.raw_product_ref ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-right text-[13px] tabular-nums">
-                          {it.qty_requested ?? 0}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {po.items.length === 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={2}
-                          className="text-center text-xs text-muted-foreground"
-                        >
-                          No items
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border bg-muted/30 p-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold">{value}</p>
+      <RequestDetailSheet
+        context={
+          active
+            ? {
+                id: active.id,
+                partnerName: active.buyer,
+                title: active.poNumber ?? "—",
+                titleLabel: "PO Number",
+                status: active.status,
+                dateReceived: active.dateReceived,
+              }
+            : null
+        }
+        onOpenChange={(o) => !o && setActive(null)}
+      />
     </div>
   );
 }
