@@ -334,12 +334,17 @@ interface SupplierOfferRow {
   id: string;
   supplier: string;
   raw_product_name: string | null;
+  np_sku_id: string | null;
   quantity_offered: number | null;
+  unit: string | null;
   price_per_unit: number | null;
   currency: string | null;
   expiry_date: string | null;
+  batch_number: string | null;
   expiry_ok: boolean | null;
   status: string | null;
+  created_at: string | null;
+  incoming_request_id: string | null;
 }
 
 function normalizeOfferStatus(s: string | null | undefined): OfferStatus {
@@ -367,9 +372,9 @@ function SupplierOffersTab() {
       const { data, error } = await supabase
         .from("supplier_offers")
         .select(
-          "id, supplier, raw_product_name, quantity_offered, price_per_unit, currency, expiry_date, expiry_ok, status",
+          "id, supplier, raw_product_name, np_sku_id, quantity_offered, unit, price_per_unit, currency, expiry_date, batch_number, expiry_ok, status, created_at, incoming_request_id",
         )
-        .order("id", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
       return (data ?? []) as SupplierOfferRow[];
