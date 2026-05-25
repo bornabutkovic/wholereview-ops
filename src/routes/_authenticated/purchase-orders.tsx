@@ -98,13 +98,14 @@ interface IncomingRequestRow {
   doc_type: string | null;
   status: string | null;
   po_number: string | null;
-  notes: string | null;
   is_urgent: boolean | null;
   cycle_ref: string | null;
-  payment_confirmed: boolean | null;
   created_at: string;
-  received_at?: string | null;
   partner: PartnerRow | PartnerRow[] | null;
+  email_log:
+    | { subject: string | null; received_at: string | null }
+    | { subject: string | null; received_at: string | null }[]
+    | null;
   request_items: RequestItemRow[] | null;
 }
 
@@ -114,7 +115,7 @@ interface PurchaseOrder {
   country: string | null;
   contactEmail: string | null;
   poNumber: string | null;
-  notes: string | null;
+  subject: string | null;
   isUrgent: boolean;
   dateReceived: string;
   productsCount: number;
@@ -140,7 +141,8 @@ function normalizeStatus(s: string | null | undefined): RequestStatus {
 
 function normalize(row: IncomingRequestRow): PurchaseOrder {
   const partner = Array.isArray(row.partner) ? row.partner[0] : row.partner;
-  const buyer = partner?.name?.trim() || "—";
+  const email = Array.isArray(row.email_log) ? row.email_log[0] : row.email_log;
+  const buyer = partner?.name?.trim() || "Unknown";
   const items = row.request_items ?? [];
   const totalQty = items.reduce((acc, it) => acc + (it.qty_requested ?? 0), 0);
   return {
@@ -149,9 +151,9 @@ function normalize(row: IncomingRequestRow): PurchaseOrder {
     country: partner?.country ?? null,
     contactEmail: partner?.contact_email ?? null,
     poNumber: row.po_number,
-    notes: row.notes,
+    subject: email?.subject ?? null,
     isUrgent: !!row.is_urgent,
-    dateReceived: row.received_at ?? row.created_at,
+    dateReceived: email?.received_at ?? row.created_at,
     productsCount: items.length,
     totalQuantity: totalQty,
     status: normalizeStatus(row.status),
@@ -170,7 +172,10 @@ function PurchaseOrdersPage() {
       const { data, error } = await supabase
         .from("incoming_requests")
         .select(
-          "id, partner_id, doc_type, status, po_number, notes, is_urgent, cycle_ref, payment_confirmed, created_at, received_at, partner:partner_id(partner_id, name, country, contact_email), request_items!incoming_request_id(id, qty_requested, np_sku_id, raw_product_ref)",
+          `id, doc_type, status, po_number, partner_id, is_urgent, cycle_ref, created_at,
+           partner:partner_id (partner_id, name, contact_email, country),
+           email_log:email_log_id (subject, received_at),
+           request_items (id, np_sku_id, raw_product_ref, qty_requested)`,
         )
         .in("doc_type", PO_DOC_TYPES as unknown as string[])
         .order("created_at", { ascending: false })
@@ -243,9 +248,9 @@ function PurchaseOrdersPage() {
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
                 <TableHead className="text-xs">Buyer</TableHead>
-                <TableHead className="w-[160px] text-xs">Date Received</TableHead>
+                <TableHead className="w-[160px] text-xs">Date</TableHead>
+                <TableHead className="w-[140px] text-xs">PO Number</TableHead>
                 <TableHead className="w-[100px] text-right text-xs">Products</TableHead>
-                <TableHead className="w-[130px] text-right text-xs">Total Qty</TableHead>
                 <TableHead className="w-[140px] text-xs">Status</TableHead>
                 <TableHead className="w-[100px] text-xs"></TableHead>
               </TableRow>
@@ -259,11 +264,9 @@ function PurchaseOrdersPage() {
                   <TableCell className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(po.dateReceived), { addSuffix: true })}
                   </TableCell>
+                  <TableCell className="font-mono text-xs">{po.poNumber ?? "—"}</TableCell>
                   <TableCell className="text-right text-[13px] tabular-nums">
                     {po.productsCount}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums">
-                    {po.totalQuantity.toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -330,11 +333,12 @@ function DetailsDialog({
               <Stat label="Status" value={STATUS_LABELS[po.status]} />
             </div>
 
-            {po.notes && (
+            {po.subject && (
               <p className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                {po.notes}
+                {po.subject}
               </p>
             )}
+
 
 
             <div className="space-y-1.5">
