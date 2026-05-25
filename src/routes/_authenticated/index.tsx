@@ -70,8 +70,7 @@ async function countBuyerPartners() {
 async function countReceivedBatches() {
   const { count, error } = await supabase
     .from("batch")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "RECEIVED");
+    .select("*", { count: "exact", head: true });
   if (error) throw error;
   return count ?? 0;
 }
