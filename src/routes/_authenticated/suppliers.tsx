@@ -96,137 +96,65 @@ function SuppliersPage() {
 // Tab 1 — Draft Orders
 // ---------------------------------------------------------------------------
 
-type DraftStatus = "draft" | "sent" | "confirmed";
-
-const DRAFT_STATUS_STYLES: Record<DraftStatus, string> = {
-  draft: "bg-slate-100 text-slate-700 border-slate-200",
-  sent: "bg-blue-50 text-blue-700 border-blue-200",
-  confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-};
-
-const DRAFT_STATUS_FILTERS: { value: DraftStatus | "ALL"; label: string }[] = [
-  { value: "ALL", label: "All statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "confirmed", label: "Confirmed" },
-];
 
 interface EmailLogRow {
   id: string;
-  partner_id: string | null;
-  status: string | null;
+  from_address: string | null;
+  to_address: string | null;
+  subject: string | null;
   received_at: string | null;
+  parse_status: string | null;
+  doc_type: string | null;
+  has_attachments: boolean | null;
 }
 
 interface DraftOrder {
   id: string;
   supplier: string;
+  subject: string;
   date: string | null;
-  productsCount: number;
-  totalQuantity: number;
-  status: DraftStatus;
-}
-
-function normalizeDraftStatus(s: string | null | undefined): DraftStatus {
-  const v = (s ?? "").toLowerCase();
-  if (v === "sent") return "sent";
-  if (v === "confirmed") return "confirmed";
-  return "draft";
-}
-
-interface DraftPayloadItem {
-  quantity?: number | null;
-  qty?: number | null;
-  qty_requested?: number | null;
-}
-
-function extractItems(payload: unknown): DraftPayloadItem[] {
-  if (!payload || typeof payload !== "object") return [];
-  const p = payload as Record<string, unknown>;
-  const candidates = [p.items, p.lines, p.products];
-  for (const c of candidates) {
-    if (Array.isArray(c)) return c as DraftPayloadItem[];
-  }
-  return [];
+  parseStatus: string;
+  docType: string;
+  hasAttachments: boolean;
 }
 
 function normalizeDraft(row: EmailLogRow): DraftOrder {
   return {
     id: row.id,
-    supplier: row.partner_id ?? "—",
+    supplier: row.from_address ?? row.to_address ?? "—",
+    subject: row.subject ?? "—",
     date: row.received_at,
-    productsCount: 0,
-    totalQuantity: 0,
-    status: normalizeDraftStatus(row.status),
+    parseStatus: row.parse_status ?? "—",
+    docType: row.doc_type ?? "—",
+    hasAttachments: !!row.has_attachments,
   };
 }
 
 function DraftOrdersTab() {
-  const [status, setStatus] = useState<DraftStatus | "ALL">("ALL");
-  const [supplier, setSupplier] = useState<SupplierCode | "ALL">("ALL");
-
   const query = useQuery({
     queryKey: ["supplier-draft-orders"],
     queryFn: async (): Promise<DraftOrder[]> => {
       const { data, error } = await supabase
         .from("email_log")
-        .select("id, partner_id, status, received_at")
-        .eq("doc_type", "SUPPLIER_OFFER")
-        .eq("direction", "outbound")
+        .select(
+          "id, from_address, to_address, subject, received_at, parse_status, doc_type, has_attachments",
+        )
         .order("received_at", { ascending: false, nullsFirst: false })
-        .limit(500);
+        .limit(50);
       if (error) throw error;
       return ((data ?? []) as unknown as EmailLogRow[]).map(normalizeDraft);
     },
   });
 
-  const filtered = useMemo(() => {
-    return (query.data ?? []).filter((d) => {
-      if (status !== "ALL" && d.status !== status) return false;
-      if (supplier !== "ALL" && d.supplier.toUpperCase() !== supplier) return false;
-      return true;
-    });
-  }, [query.data, status, supplier]);
+  const filtered = query.data ?? [];
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b px-6 py-3">
-        <Select value={status} onValueChange={(v) => setStatus(v as DraftStatus | "ALL")}>
-          <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DRAFT_STATUS_FILTERS.map((s) => (
-              <SelectItem key={s.value} value={s.value} className="text-xs">
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={supplier}
-          onValueChange={(v) => setSupplier(v as SupplierCode | "ALL")}
-        >
-          <SelectTrigger className="h-8 w-[150px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL" className="text-xs">
-              All suppliers
-            </SelectItem>
-            {SUPPLIERS.map((s) => (
-              <SelectItem key={s} value={s} className="text-xs">
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+      <div className="flex items-center gap-2 border-b px-6 py-3">
         <div className="ml-auto text-xs text-muted-foreground">
           {query.isLoading
             ? "Loading…"
-            : `${filtered.length} draft${filtered.length === 1 ? "" : "s"}`}
+            : `${filtered.length} email${filtered.length === 1 ? "" : "s"}`}
         </div>
       </div>
 
@@ -239,46 +167,47 @@ function DraftOrdersTab() {
         ) : query.isLoading ? (
           <LoadingState />
         ) : filtered.length === 0 ? (
-          <EmptyState label="No draft orders" />
+          <EmptyState label="No emails" />
         ) : (
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
-                <TableHead className="w-[130px] text-xs">Supplier</TableHead>
+                <TableHead className="text-xs">From / To</TableHead>
+                <TableHead className="text-xs">Subject</TableHead>
+                <TableHead className="w-[140px] text-xs">Doc Type</TableHead>
+                <TableHead className="w-[110px] text-xs">Parse</TableHead>
+                <TableHead className="w-[90px] text-center text-xs">Attach</TableHead>
                 <TableHead className="w-[160px] text-xs">Date</TableHead>
-                <TableHead className="w-[100px] text-right text-xs">Products</TableHead>
-                <TableHead className="w-[130px] text-right text-xs">Total Qty</TableHead>
-                <TableHead className="w-[130px] text-xs">Status</TableHead>
-                <TableHead className="w-[100px] text-xs"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((d) => (
                 <TableRow key={d.id} className="text-sm">
-                  <TableCell>
-                    <SupplierBadge code={d.supplier} />
+                  <TableCell className="max-w-[220px] truncate text-[13px]">
+                    {d.supplier}
+                  </TableCell>
+                  <TableCell className="max-w-0 truncate text-[13px]">
+                    {d.subject}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="outline" className="font-medium">
+                      {d.docType}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="outline" className="font-medium">
+                      {d.parseStatus}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {d.hasAttachments ? (
+                      <Check className="mx-auto h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {d.date ? formatDistanceToNow(new Date(d.date), { addSuffix: true }) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums">
-                    {d.productsCount}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums">
-                    {d.totalQuantity.toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`font-medium ${DRAFT_STATUS_STYLES[d.status]}`}
-                    >
-                      {d.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="outline">
-                      View
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
