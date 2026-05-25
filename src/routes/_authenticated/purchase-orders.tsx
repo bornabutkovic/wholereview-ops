@@ -301,10 +301,24 @@ function DetailsDialog({
     <Dialog open={!!po} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle className="text-base">Purchase Order</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            Purchase Order
+            {po?.poNumber && (
+              <span className="font-mono text-xs text-muted-foreground">
+                · {po.poNumber}
+              </span>
+            )}
+            {po?.isUrgent && (
+              <Badge variant="outline" className="border-red-200 bg-red-50 text-[10px] text-red-700">
+                URGENT
+              </Badge>
+            )}
+          </DialogTitle>
           <DialogDescription className="text-xs">
-            {po?.buyer} ·{" "}
+            {po?.buyer}
+            {po?.country ? ` · ${po.country}` : ""} ·{" "}
             {po && formatDistanceToNow(new Date(po.dateReceived), { addSuffix: true })}
+            {po?.contactEmail ? ` · ${po.contactEmail}` : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -315,6 +329,13 @@ function DetailsDialog({
               <Stat label="Total quantity" value={po.totalQuantity.toLocaleString()} />
               <Stat label="Status" value={STATUS_LABELS[po.status]} />
             </div>
+
+            {po.notes && (
+              <p className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                {po.notes}
+              </p>
+            )}
+
 
             <div className="space-y-1.5">
               <p className="text-xs font-medium">Items</p>
