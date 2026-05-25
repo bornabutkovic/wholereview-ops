@@ -164,43 +164,11 @@ function DraftOrdersTab() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b px-6 py-3">
-        <Select value={status} onValueChange={(v) => setStatus(v as DraftStatus | "ALL")}>
-          <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DRAFT_STATUS_FILTERS.map((s) => (
-              <SelectItem key={s.value} value={s.value} className="text-xs">
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={supplier}
-          onValueChange={(v) => setSupplier(v as SupplierCode | "ALL")}
-        >
-          <SelectTrigger className="h-8 w-[150px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL" className="text-xs">
-              All suppliers
-            </SelectItem>
-            {SUPPLIERS.map((s) => (
-              <SelectItem key={s} value={s} className="text-xs">
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+      <div className="flex items-center gap-2 border-b px-6 py-3">
         <div className="ml-auto text-xs text-muted-foreground">
           {query.isLoading
             ? "Loading…"
-            : `${filtered.length} draft${filtered.length === 1 ? "" : "s"}`}
+            : `${filtered.length} email${filtered.length === 1 ? "" : "s"}`}
         </div>
       </div>
 
@@ -213,46 +181,47 @@ function DraftOrdersTab() {
         ) : query.isLoading ? (
           <LoadingState />
         ) : filtered.length === 0 ? (
-          <EmptyState label="No draft orders" />
+          <EmptyState label="No emails" />
         ) : (
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
-                <TableHead className="w-[130px] text-xs">Supplier</TableHead>
+                <TableHead className="text-xs">From / To</TableHead>
+                <TableHead className="text-xs">Subject</TableHead>
+                <TableHead className="w-[140px] text-xs">Doc Type</TableHead>
+                <TableHead className="w-[110px] text-xs">Parse</TableHead>
+                <TableHead className="w-[90px] text-center text-xs">Attach</TableHead>
                 <TableHead className="w-[160px] text-xs">Date</TableHead>
-                <TableHead className="w-[100px] text-right text-xs">Products</TableHead>
-                <TableHead className="w-[130px] text-right text-xs">Total Qty</TableHead>
-                <TableHead className="w-[130px] text-xs">Status</TableHead>
-                <TableHead className="w-[100px] text-xs"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((d) => (
                 <TableRow key={d.id} className="text-sm">
-                  <TableCell>
-                    <SupplierBadge code={d.supplier} />
+                  <TableCell className="max-w-[220px] truncate text-[13px]">
+                    {d.supplier}
+                  </TableCell>
+                  <TableCell className="max-w-0 truncate text-[13px]">
+                    {d.subject}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="outline" className="font-medium">
+                      {d.docType}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="outline" className="font-medium">
+                      {d.parseStatus}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {d.hasAttachments ? (
+                      <Check className="mx-auto h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {d.date ? formatDistanceToNow(new Date(d.date), { addSuffix: true }) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums">
-                    {d.productsCount}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums">
-                    {d.totalQuantity.toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`font-medium ${DRAFT_STATUS_STYLES[d.status]}`}
-                    >
-                      {d.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="outline">
-                      View
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
