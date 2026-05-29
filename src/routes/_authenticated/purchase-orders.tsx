@@ -302,12 +302,15 @@ function PurchaseOrdersPage() {
           active
             ? {
                 id: active.id,
+                partnerId: active.partnerId,
                 partnerName: active.buyer,
+                contactEmail: active.contactEmail,
                 title: active.poNumber ?? "—",
                 titleLabel: "PO Number",
                 status: active.status,
                 dateReceived: active.dateReceived,
               }
+
             : null
         }
         onOpenChange={(o) => !o && setActive(null)}
