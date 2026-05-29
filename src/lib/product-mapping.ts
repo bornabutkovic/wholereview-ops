@@ -56,10 +56,11 @@ export function usePartners(options?: { buyersOnly?: boolean }) {
     },
   });
 }
-
 interface RawSkuRow {
   np_sku_id: string;
   pack_description: string | null;
+  eu_approval_no: string | null;
+  hr_approval_no: string | null;
   np_product:
     | { brand: string | null; inn: string | null }
     | { brand: string | null; inn: string | null }[]
@@ -74,7 +75,11 @@ function normalizeSku(row: unknown): NpSkuDetails {
     pack_description: r.pack_description,
     brand: product?.brand ?? null,
     inn: product?.inn ?? null,
+    eu_approval_no: r.eu_approval_no,
+    hr_approval_no: r.hr_approval_no,
   };
+}
+
 }
 
 // ---------------------------------------------------------------------------
