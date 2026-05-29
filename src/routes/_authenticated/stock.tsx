@@ -175,6 +175,9 @@ function StockPage() {
             <TabsTrigger value="virtual" className="text-xs">
               Virtual Stock
             </TabsTrigger>
+            <TabsTrigger value="allocation" className="text-xs">
+              Allocation
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -185,6 +188,11 @@ function StockPage() {
         <TabsContent value="virtual" className="flex-1 overflow-auto p-6 pt-4">
           <VirtualStockPlaceholder />
         </TabsContent>
+
+        <TabsContent value="allocation" className="flex-1 overflow-auto p-6 pt-4">
+          <AllocationTab />
+        </TabsContent>
+
       </Tabs>
     </div>
   );
