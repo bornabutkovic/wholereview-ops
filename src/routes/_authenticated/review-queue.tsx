@@ -887,6 +887,15 @@ function SkuCombobox(props: SkuComboboxProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command
+          filter={(value, search) =>
+            value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+          }
+        >
+          <CommandInput placeholder="Search SKU, brand, INN…" />
+          <CommandList>
+            <CommandEmpty>No SKU found.</CommandEmpty>
+            <CommandGroup>
               {skus.map((s) => {
                 const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""} ${s.eu_approval_no ?? ""} ${s.hr_approval_no ?? ""}`;
                 return (
@@ -920,6 +929,7 @@ function SkuCombobox(props: SkuComboboxProps) {
           </CommandList>
         </Command>
       </PopoverContent>
+
     </Popover>
   );
 }
