@@ -382,3 +382,289 @@ function VirtualStockPlaceholder() {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Allocation tab
+// ---------------------------------------------------------------------------
+
+interface CycleRow {
+  cycle_ref: string;
+  status: string | null;
+}
+
+interface AllocationPreviewRow {
+  np_sku_id: string | null;
+  partner_id: string | null;
+  partner_name: string | null;
+  qty_requested: number | null;
+  qty_allocated: number | null;
+  fulfilled_pct: number | null;
+  status: string | null;
+}
+
+interface AllocateCycleResponse {
+  allocations?: AllocationPreviewRow[];
+  confirmed_count?: number;
+}
+
+const ALLOC_STATUS_STYLES: Record<string, string> = {
+  FULL: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  PARTIAL: "bg-orange-50 text-orange-700 border-orange-200",
+  NONE: "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+function AllocationTab() {
+  const queryClient = useQueryClient();
+  const [preview, setPreview] = useState<AllocationPreviewRow[] | null>(null);
+
+  const cycleQuery = useQuery({
+    queryKey: ["open-cycle"],
+    queryFn: async (): Promise<CycleRow | null> => {
+      const { data, error } = await (supabase as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, val: string) => {
+              maybeSingle: () => Promise<{ data: CycleRow | null; error: unknown }>;
+            };
+          };
+        };
+      })
+        .from("cycles")
+        .select("cycle_ref, status")
+        .eq("status", "OPEN")
+        .maybeSingle();
+      if (error) throw error as Error;
+      return data;
+    },
+  });
+
+  const cycle = cycleQuery.data;
+  const cycleRef = cycle?.cycle_ref ?? null;
+
+  const stockConfirmed = useQuery({
+    queryKey: ["stock-confirmed", cycleRef],
+    enabled: !!cycleRef,
+    queryFn: async (): Promise<{ total: number; unconfirmed: number }> => {
+      const { data, error } = await (supabase as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, val: string) => Promise<{
+              data: Array<{ warehouse_confirmed: boolean | null }> | null;
+              error: unknown;
+            }>;
+          };
+        };
+      })
+        .from("stock_entries")
+        .select("warehouse_confirmed")
+        .eq("cycle_ref", cycleRef!);
+      if (error) throw error as Error;
+      const rows = data ?? [];
+      return {
+        total: rows.length,
+        unconfirmed: rows.filter((r) => !r.warehouse_confirmed).length,
+      };
+    },
+  });
+
+  const allConfirmed =
+    !!stockConfirmed.data &&
+    stockConfirmed.data.total > 0 &&
+    stockConfirmed.data.unconfirmed === 0;
+
+  const confirmWarehouse = useMutation({
+    mutationFn: async () => {
+      if (!cycleRef) throw new Error("No open cycle");
+      const { error } = await (supabase as unknown as {
+        from: (t: string) => {
+          update: (v: Record<string, unknown>) => {
+            eq: (col: string, val: string) => Promise<{ error: unknown }>;
+          };
+        };
+      })
+        .from("stock_entries")
+        .update({ warehouse_confirmed: true })
+        .eq("cycle_ref", cycleRef);
+      if (error) throw error as Error;
+    },
+    onSuccess: () => {
+      toast.success("Skladišno stanje potvrđeno");
+      queryClient.invalidateQueries({ queryKey: ["stock-confirmed", cycleRef] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const runAllocation = useMutation({
+    mutationFn: async (previewOnly: boolean): Promise<AllocateCycleResponse> => {
+      if (!cycleRef) throw new Error("No open cycle");
+      const { data, error } = await supabase.functions.invoke<AllocateCycleResponse>(
+        "allocate-cycle",
+        { body: { cycle_ref: cycleRef, preview_only: previewOnly } },
+      );
+      if (error) throw error;
+      return data ?? {};
+    },
+  });
+
+  const handlePreview = () => {
+    runAllocation.mutate(true, {
+      onSuccess: (res) => setPreview(res.allocations ?? []),
+      onError: (e: Error) => toast.error(e.message),
+    });
+  };
+
+  const handleApprove = () => {
+    runAllocation.mutate(false, {
+      onSuccess: (res) => {
+        const n = res.confirmed_count ?? res.allocations?.length ?? 0;
+        toast.success(`Ciklus zatvoren. ${n} alokacija potvrđeno.`);
+        setPreview(null);
+        queryClient.invalidateQueries({ queryKey: ["open-cycle"] });
+      },
+      onError: (e: Error) => toast.error(e.message),
+    });
+  };
+
+  const disabled = !cycleRef || !allConfirmed || runAllocation.isPending;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Cycle
+          </span>
+          {cycleQuery.isLoading ? (
+            <Skeleton className="h-5 w-20" />
+          ) : cycle ? (
+            <>
+              <Badge variant="outline" className="font-mono text-xs">
+                {cycle.cycle_ref}
+              </Badge>
+              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200" variant="outline">
+                {cycle.status}
+              </Badge>
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">No open cycle</span>
+          )}
+        </div>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!cycleRef || confirmWarehouse.isPending || allConfirmed}
+            onClick={() => confirmWarehouse.mutate()}
+          >
+            {confirmWarehouse.isPending ? (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+            )}
+            Confirm Warehouse Stock
+          </Button>
+          <Button size="sm" disabled={disabled} onClick={handlePreview}>
+            {runAllocation.isPending && !preview ? (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <PlayCircle className="mr-2 h-3.5 w-3.5" />
+            )}
+            Run Allocation Preview
+          </Button>
+        </div>
+      </div>
+
+      {cycleRef && !allConfirmed && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <AlertTriangle className="h-4 w-4" />
+          Potvrdite skladišno stanje prije pokretanja alokacije
+          {stockConfirmed.data && (
+            <span className="ml-auto font-mono">
+              {stockConfirmed.data.total - stockConfirmed.data.unconfirmed}/
+              {stockConfirmed.data.total} confirmed
+            </span>
+          )}
+        </div>
+      )}
+
+      {preview && (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[140px]">SKU</TableHead>
+                <TableHead>Buyer</TableHead>
+                <TableHead className="text-right">Qty Requested</TableHead>
+                <TableHead className="text-right">Qty Allocated</TableHead>
+                <TableHead className="text-right">Fulfilled %</TableHead>
+                <TableHead className="w-[100px]">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {preview.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-xs text-muted-foreground">
+                    No allocations
+                  </TableCell>
+                </TableRow>
+              ) : (
+                preview.map((r, i) => {
+                  const st = (r.status ?? "").toUpperCase();
+                  const pct =
+                    r.fulfilled_pct ??
+                    (r.qty_requested && r.qty_allocated != null
+                      ? Math.round((r.qty_allocated / r.qty_requested) * 100)
+                      : null);
+                  return (
+                    <TableRow key={`${r.np_sku_id}-${r.partner_id}-${i}`} className="text-sm">
+                      <TableCell className="font-mono text-xs">{r.np_sku_id ?? "—"}</TableCell>
+                      <TableCell>{r.partner_name ?? r.partner_id ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.qty_requested ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.qty_allocated ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {pct != null ? `${pct}%` : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            ALLOC_STATUS_STYLES[st] ??
+                            "bg-slate-100 text-slate-600 border-slate-200"
+                          }
+                        >
+                          {st || "—"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {preview && preview.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            disabled={disabled}
+            onClick={handleApprove}
+          >
+            {runAllocation.isPending ? (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+            )}
+            Approve &amp; Close Cycle
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
