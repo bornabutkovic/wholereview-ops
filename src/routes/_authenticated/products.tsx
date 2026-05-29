@@ -222,12 +222,16 @@ function ProductsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[140px]">SKU ID</TableHead>
+                <TableHead className="w-[120px]">EU No.</TableHead>
+                <TableHead className="w-[120px]">HR No.</TableHead>
                 <TableHead>Product Name</TableHead>
                 <TableHead>Pack</TableHead>
                 <TableHead className="w-[120px]">Origin</TableHead>
                 <TableHead className="w-[160px]">EAN</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
               </TableRow>
+            </TableHeader>
+
             </TableHeader>
             <TableBody>
               {isLoading ? (
