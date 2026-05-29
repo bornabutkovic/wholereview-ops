@@ -118,9 +118,10 @@ export function RequestDetailSheet({
       const { data, error } = await supabase
         .from("request_items")
         .select(
-          "id, raw_product_ref, np_sku_id, qty_requested, qty_unit, min_expiry_months, status, offered_price",
+          "id, raw_product_ref, np_sku_id, qty_requested, qty_unit, min_expiry_months, status, offered_price, np_sku:np_sku_id(eu_approval_no, hr_approval_no)",
         )
         .eq("incoming_request_id", id!);
+
       if (error) throw error;
       return (data ?? []) as unknown as RequestItem[];
     },
