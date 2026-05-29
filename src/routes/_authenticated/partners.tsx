@@ -108,6 +108,49 @@ function usePartnerRequests(partnerId: string | null) {
   });
 }
 
+export interface PartnerContact {
+  id: string;
+  partner_id: string;
+  email: string;
+  name: string | null;
+  role: string | null;
+  is_primary: boolean;
+}
+
+// Untyped accessor — partner_contacts isn't in the generated Database types yet.
+const contactsTable = () =>
+  (supabase as unknown as {
+    from: (t: string) => {
+      select: (cols: string) => {
+        eq: (c: string, v: string) => {
+          order: (
+            c: string,
+            o: { ascending: boolean },
+          ) => Promise<{ data: PartnerContact[] | null; error: { message: string } | null }>;
+        };
+      };
+      insert: (
+        v: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+  }).from("partner_contacts");
+
+function usePartnerContacts(partnerId: string | null) {
+  return useQuery({
+    queryKey: ["partner-contacts", partnerId],
+    enabled: !!partnerId,
+    queryFn: async (): Promise<PartnerContact[]> => {
+      const { data, error } = await contactsTable()
+        .select("id, partner_id, email, name, role, is_primary")
+        .eq("partner_id", partnerId!)
+        .order("is_primary", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+}
+
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
