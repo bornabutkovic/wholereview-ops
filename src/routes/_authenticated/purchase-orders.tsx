@@ -140,9 +140,11 @@ function normalize(row: IncomingRequestRow): PurchaseOrder {
   const email = Array.isArray(row.email_log) ? row.email_log[0] : row.email_log;
   const buyer = partner?.name?.trim() || "Unknown";
   const items = row.request_items ?? [];
-  const totalQty = items.reduce((acc, it) => acc + (it.qty_requested ?? 0), 0);
-  return {
     id: row.id,
+    buyer,
+    partnerId: row.partner_id,
+    country: partner?.country ?? null,
+
     buyer,
     country: partner?.country ?? null,
     contactEmail: partner?.contact_email ?? null,
