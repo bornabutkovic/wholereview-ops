@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Search, Eye, Mail, FileText, MapPin, Hash } from "lucide-react";
+import { Search, Eye, Mail, FileText, MapPin, Hash, Plus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +27,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+
 
 export const Route = createFileRoute("/_authenticated/partners")({
   component: PartnersPage,
@@ -95,6 +107,49 @@ function usePartnerRequests(partnerId: string | null) {
     },
   });
 }
+
+export interface PartnerContact {
+  id: string;
+  partner_id: string;
+  email: string;
+  name: string | null;
+  role: string | null;
+  is_primary: boolean;
+}
+
+// Untyped accessor — partner_contacts isn't in the generated Database types yet.
+const contactsTable = () =>
+  (supabase as unknown as {
+    from: (t: string) => {
+      select: (cols: string) => {
+        eq: (c: string, v: string) => {
+          order: (
+            c: string,
+            o: { ascending: boolean },
+          ) => Promise<{ data: PartnerContact[] | null; error: { message: string } | null }>;
+        };
+      };
+      insert: (
+        v: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+  }).from("partner_contacts");
+
+function usePartnerContacts(partnerId: string | null) {
+  return useQuery({
+    queryKey: ["partner-contacts", partnerId],
+    enabled: !!partnerId,
+    queryFn: async (): Promise<PartnerContact[]> => {
+      const { data, error } = await contactsTable()
+        .select("id, partner_id, email, name, role, is_primary")
+        .eq("partner_id", partnerId!)
+        .order("is_primary", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+}
+
 
 // ---------------------------------------------------------------------------
 // Page
@@ -346,7 +401,10 @@ function PartnerDetailSheet(props: {
                   </ul>
                 )}
               </section>
+
+              <ContactsSection partnerId={partner.partner_id} />
             </div>
+
           </>
         )}
       </SheetContent>
@@ -372,3 +430,162 @@ function DetailRow(props: {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Contacts section
+// ---------------------------------------------------------------------------
+
+function ContactsSection({ partnerId }: { partnerId: string }) {
+  const contacts = usePartnerContacts(partnerId);
+  const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [isPrimary, setIsPrimary] = useState(false);
+
+  const add = useMutation({
+    mutationFn: async () => {
+      const trimmed = email.trim();
+      if (!trimmed) throw new Error("Email is required");
+      const { error } = await contactsTable().insert({
+        partner_id: partnerId,
+        email: trimmed,
+        name: name.trim() || null,
+        role: role.trim() || null,
+        is_primary: isPrimary,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Contact added");
+      qc.invalidateQueries({ queryKey: ["partner-contacts", partnerId] });
+      setOpen(false);
+      setEmail("");
+      setName("");
+      setRole("");
+      setIsPrimary(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <section className="space-y-2 border-t pt-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Contacts
+        </h3>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1.5 text-xs"
+          onClick={() => setOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Contact
+        </Button>
+      </div>
+
+      {contacts.isLoading ? (
+        <Skeleton className="h-16 w-full" />
+      ) : contacts.error ? (
+        <p className="text-xs text-destructive">
+          {(contacts.error as Error).message}
+        </p>
+      ) : (contacts.data ?? []).length === 0 ? (
+        <p className="text-xs text-muted-foreground">No contacts yet</p>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-[11px]">Email</TableHead>
+                <TableHead className="text-[11px]">Name</TableHead>
+                <TableHead className="text-[11px]">Role</TableHead>
+                <TableHead className="text-[11px] w-[80px]">Primary</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contacts.data!.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono text-xs">{c.email}</TableCell>
+                  <TableCell className="text-xs">{c.name ?? "—"}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {c.role ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    {c.is_primary ? (
+                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px]">
+                        Primary
+                      </Badge>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Add contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email</Label>
+              <Input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Role</Label>
+              <Input
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                placeholder="e.g. Procurement"
+                className="h-9 text-sm"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-xs">
+              <Checkbox
+                checked={isPrimary}
+                onCheckedChange={(v) => setIsPrimary(v === true)}
+              />
+              Mark as primary
+            </label>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={add.isPending}
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => add.mutate()} disabled={add.isPending}>
+              {add.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
+
