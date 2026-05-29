@@ -19,6 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+} from "@/components/ui/table";
 import {
   Sheet,
   SheetContent,
@@ -36,7 +37,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-} from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/_authenticated/partners")({
   component: PartnersPage,
