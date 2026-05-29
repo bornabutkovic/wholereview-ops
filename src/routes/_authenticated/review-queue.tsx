@@ -916,19 +916,6 @@ function SkuCombobox(props: SkuComboboxProps) {
                   </CommandItem>
                 );
               })}
-
-                      )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm">{label(s)}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">
-                        {s.np_sku_id}
-                        {s.inn ? ` · ${s.inn}` : ""}
-                      </div>
-                    </div>
-                  </CommandItem>
-                );
-              })}
             </CommandGroup>
           </CommandList>
         </Command>
