@@ -231,26 +231,24 @@ function ProductsPage() {
                 <TableHead className="w-[100px]">Status</TableHead>
               </TableRow>
             </TableHeader>
-
-            </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={8}>
                       <Skeleton className="h-5 w-full" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-destructive">
+                  <TableCell colSpan={8} className="text-center text-sm text-destructive">
                     {(error as Error).message}
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
                     No products found
                   </TableCell>
                 </TableRow>
@@ -262,6 +260,12 @@ function ProductsPage() {
                     onClick={() => setSelected(s)}
                   >
                     <TableCell className="font-mono text-xs">{s.np_sku_id}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {s.eu_approval_no ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {s.hr_approval_no ?? "—"}
+                    </TableCell>
                     <TableCell className="font-medium">{productName(s)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {s.pack_description ?? "—"}
@@ -276,6 +280,8 @@ function ProductsPage() {
                       <StatusBadge status={s.status} />
                     </TableCell>
                   </TableRow>
+                ))
+
                 ))
               )}
             </TableBody>
