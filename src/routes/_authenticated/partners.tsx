@@ -401,6 +401,10 @@ function PartnerDetailSheet(props: {
                   </ul>
                 )}
               </section>
+
+              <ContactsSection partnerId={partner.partner_id} />
+            </div>
+
             </div>
           </>
         )}
