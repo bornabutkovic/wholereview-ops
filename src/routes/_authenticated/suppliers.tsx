@@ -306,8 +306,9 @@ function SupplierOffersTab() {
       const { data, error } = await supabase
         .from("supplier_offers")
         .select(
-          "id, supplier, raw_product_name, np_sku_id, quantity_offered, unit, price_per_unit, currency, expiry_date, batch_number, expiry_ok, status, created_at, incoming_request_id",
+          "id, supplier, raw_product_name, np_sku_id, quantity_offered, unit, price_per_unit, currency, expiry_date, batch_number, expiry_ok, status, created_at, incoming_request_id, np_sku:np_sku_id(eu_approval_no, hr_approval_no)",
         )
+
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
