@@ -812,7 +812,19 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           value={selectedSkuId}
           onChange={setSelectedSkuId}
         />
+        {(() => {
+          const sel = skus.data?.find((s) => s.np_sku_id === selectedSkuId);
+          if (!sel || (!sel.eu_approval_no && !sel.hr_approval_no)) return null;
+          return (
+            <p className="text-[11px] text-muted-foreground">
+              {sel.eu_approval_no && <>EU: {sel.eu_approval_no}</>}
+              {sel.eu_approval_no && sel.hr_approval_no && " · "}
+              {sel.hr_approval_no && <>HR: {sel.hr_approval_no}</>}
+            </p>
+          );
+        })()}
       </div>
+
 
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
