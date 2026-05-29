@@ -106,6 +106,7 @@ interface IncomingRequestRow {
 interface PurchaseOrder {
   id: string;
   buyer: string;
+  partnerId: string | null;
   country: string | null;
   contactEmail: string | null;
   poNumber: string | null;
@@ -117,6 +118,7 @@ interface PurchaseOrder {
   status: RequestStatus;
   items: RequestItemRow[];
 }
+
 
 function normalizeStatus(s: string | null | undefined): RequestStatus {
   const v = (s ?? "").toUpperCase();
