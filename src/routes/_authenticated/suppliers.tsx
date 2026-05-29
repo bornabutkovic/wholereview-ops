@@ -274,7 +274,12 @@ interface SupplierOfferRow {
   status: string | null;
   created_at: string | null;
   incoming_request_id: string | null;
+  np_sku?: {
+    eu_approval_no: string | null;
+    hr_approval_no: string | null;
+  } | null;
 }
+
 
 function normalizeOfferStatus(s: string | null | undefined): OfferStatus {
   const v = (s ?? "").toLowerCase();
