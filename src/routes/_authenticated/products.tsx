@@ -282,7 +282,6 @@ function ProductsPage() {
                   </TableRow>
                 ))
 
-                ))
               )}
             </TableBody>
           </Table>
