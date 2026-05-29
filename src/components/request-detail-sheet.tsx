@@ -58,7 +58,12 @@ interface RequestItem {
   min_expiry_months: number | null;
   status: string | null;
   offered_price: number | null;
+  np_sku?: {
+    eu_approval_no: string | null;
+    hr_approval_no: string | null;
+  } | null;
 }
+
 
 interface SuggestPriceResponse {
   last_sold_price?: number | null;
