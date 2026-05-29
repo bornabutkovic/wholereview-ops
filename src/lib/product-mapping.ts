@@ -80,7 +80,6 @@ function normalizeSku(row: unknown): NpSkuDetails {
   };
 }
 
-}
 
 // ---------------------------------------------------------------------------
 // Mutations
