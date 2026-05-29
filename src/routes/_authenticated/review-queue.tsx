@@ -540,16 +540,13 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
             value={partnerId}
             onChange={setPartnerId}
           />
-          {selectedPartner?.contact_email &&
-            unknownEmail &&
-            selectedPartner.contact_email !== unknownEmail && (
-              <p className="text-[11px] text-muted-foreground">
-                Current contact:{" "}
-                <span className="font-mono">{selectedPartner.contact_email}</span>{" "}
-                will be replaced with{" "}
-                <span className="font-mono">{unknownEmail}</span>
-              </p>
-            )}
+          {unknownEmail && (
+            <p className="text-[11px] text-muted-foreground">
+              <span className="font-mono">{unknownEmail}</span> will be added as
+              an additional contact for this partner.
+            </p>
+          )}
+
         </div>
       </div>
 
