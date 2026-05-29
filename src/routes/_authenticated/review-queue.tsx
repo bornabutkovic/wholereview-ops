@@ -786,9 +786,17 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
               <p className="mt-1 text-xs text-foreground">
                 {suggestedSku.pack_description ?? "—"}
               </p>
+              {(suggestedSku.eu_approval_no || suggestedSku.hr_approval_no) && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {suggestedSku.eu_approval_no && <>EU: {suggestedSku.eu_approval_no}</>}
+                  {suggestedSku.eu_approval_no && suggestedSku.hr_approval_no && " · "}
+                  {suggestedSku.hr_approval_no && <>HR: {suggestedSku.hr_approval_no}</>}
+                </p>
+              )}
               <p className="mt-2 text-[11px] font-mono text-muted-foreground">
                 {suggestedSkuId}
               </p>
+
             </>
           ) : (
             <p className="text-sm text-muted-foreground">SKU {suggestedSkuId} not found</p>
