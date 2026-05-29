@@ -217,6 +217,7 @@ export function RequestDetailSheet({
     const state = priceState[it.id];
     if (!state || !it.np_sku_id || !partnerId) return;
     const numeric = Number(state.yourPrice);
+    if (Number.isNaN(numeric)) return;
     await (supabase as unknown as {
       from: (t: string) => {
         update: (v: Record<string, unknown>) => {
@@ -230,7 +231,6 @@ export function RequestDetailSheet({
       .eq("partner_id", partnerId);
   };
 
-  };
 
   const offerPreview = useMemo(() => {
     if (!context) return "";
