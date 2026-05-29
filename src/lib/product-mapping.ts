@@ -29,11 +29,12 @@ export function useNpSkuList() {
     queryFn: async (): Promise<NpSkuDetails[]> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn)")
+        .select("np_sku_id, pack_description, eu_approval_no, hr_approval_no, np_product:np_product_id(brand, inn)")
         .order("np_sku_id", { ascending: true })
         .limit(2000);
       if (error) throw error;
       return (data ?? []).map(normalizeSku);
+
     },
   });
 }
