@@ -405,7 +405,6 @@ function PartnerDetailSheet(props: {
               <ContactsSection partnerId={partner.partner_id} />
             </div>
 
-            </div>
           </>
         )}
       </SheetContent>
