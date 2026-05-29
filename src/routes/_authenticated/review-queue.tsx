@@ -786,9 +786,17 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
               <p className="mt-1 text-xs text-foreground">
                 {suggestedSku.pack_description ?? "—"}
               </p>
+              {(suggestedSku.eu_approval_no || suggestedSku.hr_approval_no) && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {suggestedSku.eu_approval_no && <>EU: {suggestedSku.eu_approval_no}</>}
+                  {suggestedSku.eu_approval_no && suggestedSku.hr_approval_no && " · "}
+                  {suggestedSku.hr_approval_no && <>HR: {suggestedSku.hr_approval_no}</>}
+                </p>
+              )}
               <p className="mt-2 text-[11px] font-mono text-muted-foreground">
                 {suggestedSkuId}
               </p>
+
             </>
           ) : (
             <p className="text-sm text-muted-foreground">SKU {suggestedSkuId} not found</p>
@@ -804,7 +812,19 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           value={selectedSkuId}
           onChange={setSelectedSkuId}
         />
+        {(() => {
+          const sel = skus.data?.find((s) => s.np_sku_id === selectedSkuId);
+          if (!sel || (!sel.eu_approval_no && !sel.hr_approval_no)) return null;
+          return (
+            <p className="text-[11px] text-muted-foreground">
+              {sel.eu_approval_no && <>EU: {sel.eu_approval_no}</>}
+              {sel.eu_approval_no && sel.hr_approval_no && " · "}
+              {sel.hr_approval_no && <>HR: {sel.hr_approval_no}</>}
+            </p>
+          );
+        })()}
       </div>
+
 
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
@@ -867,17 +887,8 @@ function SkuCombobox(props: SkuComboboxProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-        <Command
-          filter={(value, search) =>
-            value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
-          }
-        >
-          <CommandInput placeholder="Search SKU, brand, INN…" />
-          <CommandList>
-            <CommandEmpty>No SKU found.</CommandEmpty>
-            <CommandGroup>
               {skus.map((s) => {
-                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
+                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""} ${s.eu_approval_no ?? ""} ${s.hr_approval_no ?? ""}`;
                 return (
                   <CommandItem
                     key={s.np_sku_id}
@@ -898,6 +909,8 @@ function SkuCombobox(props: SkuComboboxProps) {
                       <div className="truncate text-[11px] text-muted-foreground">
                         {s.np_sku_id}
                         {s.inn ? ` · ${s.inn}` : ""}
+                        {s.eu_approval_no ? ` · EU: ${s.eu_approval_no}` : ""}
+                        {s.hr_approval_no ? ` · HR: ${s.hr_approval_no}` : ""}
                       </div>
                     </div>
                   </CommandItem>

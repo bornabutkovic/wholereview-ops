@@ -58,7 +58,12 @@ interface RequestItem {
   min_expiry_months: number | null;
   status: string | null;
   offered_price: number | null;
+  np_sku?: {
+    eu_approval_no: string | null;
+    hr_approval_no: string | null;
+  } | null;
 }
+
 
 interface SuggestPriceResponse {
   last_sold_price?: number | null;
@@ -113,9 +118,10 @@ export function RequestDetailSheet({
       const { data, error } = await supabase
         .from("request_items")
         .select(
-          "id, raw_product_ref, np_sku_id, qty_requested, qty_unit, min_expiry_months, status, offered_price",
+          "id, raw_product_ref, np_sku_id, qty_requested, qty_unit, min_expiry_months, status, offered_price, np_sku:np_sku_id(eu_approval_no, hr_approval_no)",
         )
         .eq("incoming_request_id", id!);
+
       if (error) throw error;
       return (data ?? []) as unknown as RequestItem[];
     },
@@ -318,8 +324,22 @@ export function RequestDetailSheet({
                           return (
                             <TableRow key={it.id} className="text-sm">
                               <TableCell className="text-[13px]">
-                                {it.raw_product_ref ?? "—"}
+                                <div>{it.raw_product_ref ?? "—"}</div>
+                                {(it.np_sku?.eu_approval_no || it.np_sku?.hr_approval_no) && (
+                                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                    {it.np_sku?.eu_approval_no && (
+                                      <span>EU: {it.np_sku.eu_approval_no}</span>
+                                    )}
+                                    {it.np_sku?.eu_approval_no && it.np_sku?.hr_approval_no && (
+                                      <span> · </span>
+                                    )}
+                                    {it.np_sku?.hr_approval_no && (
+                                      <span>HR: {it.np_sku.hr_approval_no}</span>
+                                    )}
+                                  </div>
+                                )}
                               </TableCell>
+
                               <TableCell>
                                 {it.np_sku_id ? (
                                   <Badge

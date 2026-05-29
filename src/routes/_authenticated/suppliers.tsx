@@ -274,7 +274,12 @@ interface SupplierOfferRow {
   status: string | null;
   created_at: string | null;
   incoming_request_id: string | null;
+  np_sku?: {
+    eu_approval_no: string | null;
+    hr_approval_no: string | null;
+  } | null;
 }
+
 
 function normalizeOfferStatus(s: string | null | undefined): OfferStatus {
   const v = (s ?? "").toLowerCase();
@@ -301,8 +306,9 @@ function SupplierOffersTab() {
       const { data, error } = await supabase
         .from("supplier_offers")
         .select(
-          "id, supplier, raw_product_name, np_sku_id, quantity_offered, unit, price_per_unit, currency, expiry_date, batch_number, expiry_ok, status, created_at, incoming_request_id",
+          "id, supplier, raw_product_name, np_sku_id, quantity_offered, unit, price_per_unit, currency, expiry_date, batch_number, expiry_ok, status, created_at, incoming_request_id, np_sku:np_sku_id(eu_approval_no, hr_approval_no)",
         )
+
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -406,8 +412,16 @@ function SupplierOffersTab() {
                       <SupplierBadge code={o.supplier} />
                     </TableCell>
                     <TableCell className="max-w-0 truncate text-[13px]">
-                      {o.raw_product_name ?? "—"}
+                      <div>{o.raw_product_name ?? "—"}</div>
+                      {(o.np_sku?.eu_approval_no || o.np_sku?.hr_approval_no) && (
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                          {o.np_sku?.eu_approval_no && <span>EU: {o.np_sku.eu_approval_no}</span>}
+                          {o.np_sku?.eu_approval_no && o.np_sku?.hr_approval_no && <span> · </span>}
+                          {o.np_sku?.hr_approval_no && <span>HR: {o.np_sku.hr_approval_no}</span>}
+                        </div>
+                      )}
                     </TableCell>
+
                     <TableCell className="text-right text-[13px] tabular-nums">
                       {(o.quantity_offered ?? 0).toLocaleString()}
                     </TableCell>

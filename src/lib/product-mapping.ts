@@ -29,11 +29,12 @@ export function useNpSkuList() {
     queryFn: async (): Promise<NpSkuDetails[]> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn)")
+        .select("np_sku_id, pack_description, eu_approval_no, hr_approval_no, np_product:np_product_id(brand, inn)")
         .order("np_sku_id", { ascending: true })
         .limit(2000);
       if (error) throw error;
       return (data ?? []).map(normalizeSku);
+
     },
   });
 }
@@ -55,10 +56,11 @@ export function usePartners(options?: { buyersOnly?: boolean }) {
     },
   });
 }
-
 interface RawSkuRow {
   np_sku_id: string;
   pack_description: string | null;
+  eu_approval_no: string | null;
+  hr_approval_no: string | null;
   np_product:
     | { brand: string | null; inn: string | null }
     | { brand: string | null; inn: string | null }[]
@@ -73,8 +75,11 @@ function normalizeSku(row: unknown): NpSkuDetails {
     pack_description: r.pack_description,
     brand: product?.brand ?? null,
     inn: product?.inn ?? null,
+    eu_approval_no: r.eu_approval_no,
+    hr_approval_no: r.hr_approval_no,
   };
 }
+
 
 // ---------------------------------------------------------------------------
 // Mutations

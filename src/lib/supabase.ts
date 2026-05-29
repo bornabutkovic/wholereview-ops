@@ -58,7 +58,10 @@ export interface NpSkuDetails {
   pack_description: string | null;
   brand: string | null;
   inn: string | null;
+  eu_approval_no: string | null;
+  hr_approval_no: string | null;
 }
+
 
 export interface Partner {
   partner_id: string;
