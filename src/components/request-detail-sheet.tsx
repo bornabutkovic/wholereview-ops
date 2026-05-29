@@ -324,8 +324,22 @@ export function RequestDetailSheet({
                           return (
                             <TableRow key={it.id} className="text-sm">
                               <TableCell className="text-[13px]">
-                                {it.raw_product_ref ?? "—"}
+                                <div>{it.raw_product_ref ?? "—"}</div>
+                                {(it.np_sku?.eu_approval_no || it.np_sku?.hr_approval_no) && (
+                                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                    {it.np_sku?.eu_approval_no && (
+                                      <span>EU: {it.np_sku.eu_approval_no}</span>
+                                    )}
+                                    {it.np_sku?.eu_approval_no && it.np_sku?.hr_approval_no && (
+                                      <span> · </span>
+                                    )}
+                                    {it.np_sku?.hr_approval_no && (
+                                      <span>HR: {it.np_sku.hr_approval_no}</span>
+                                    )}
+                                  </div>
+                                )}
                               </TableCell>
+
                               <TableCell>
                                 {it.np_sku_id ? (
                                   <Badge
