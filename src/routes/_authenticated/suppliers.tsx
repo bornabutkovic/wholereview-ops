@@ -412,8 +412,16 @@ function SupplierOffersTab() {
                       <SupplierBadge code={o.supplier} />
                     </TableCell>
                     <TableCell className="max-w-0 truncate text-[13px]">
-                      {o.raw_product_name ?? "—"}
+                      <div>{o.raw_product_name ?? "—"}</div>
+                      {(o.np_sku?.eu_approval_no || o.np_sku?.hr_approval_no) && (
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                          {o.np_sku?.eu_approval_no && <span>EU: {o.np_sku.eu_approval_no}</span>}
+                          {o.np_sku?.eu_approval_no && o.np_sku?.hr_approval_no && <span> · </span>}
+                          {o.np_sku?.hr_approval_no && <span>HR: {o.np_sku.hr_approval_no}</span>}
+                        </div>
+                      )}
                     </TableCell>
+
                     <TableCell className="text-right text-[13px] tabular-nums">
                       {(o.quantity_offered ?? 0).toLocaleString()}
                     </TableCell>
