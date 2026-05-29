@@ -887,17 +887,8 @@ function SkuCombobox(props: SkuComboboxProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-        <Command
-          filter={(value, search) =>
-            value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
-          }
-        >
-          <CommandInput placeholder="Search SKU, brand, INN…" />
-          <CommandList>
-            <CommandEmpty>No SKU found.</CommandEmpty>
-            <CommandGroup>
               {skus.map((s) => {
-                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""}`;
+                const text = `${s.np_sku_id} ${s.brand ?? ""} ${s.inn ?? ""} ${s.pack_description ?? ""} ${s.eu_approval_no ?? ""} ${s.hr_approval_no ?? ""}`;
                 return (
                   <CommandItem
                     key={s.np_sku_id}
@@ -911,6 +902,21 @@ function SkuCombobox(props: SkuComboboxProps) {
                       className={cn(
                         "mr-2 h-4 w-4",
                         value === s.np_sku_id ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm">{label(s)}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {s.np_sku_id}
+                        {s.inn ? ` · ${s.inn}` : ""}
+                        {s.eu_approval_no ? ` · EU: ${s.eu_approval_no}` : ""}
+                        {s.hr_approval_no ? ` · HR: ${s.hr_approval_no}` : ""}
+                      </div>
+                    </div>
+                  </CommandItem>
+                );
+              })}
+
                       )}
                     />
                     <div className="min-w-0 flex-1">
