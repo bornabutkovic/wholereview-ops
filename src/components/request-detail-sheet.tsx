@@ -217,12 +217,19 @@ export function RequestDetailSheet({
     const state = priceState[it.id];
     if (!state || !it.np_sku_id || !partnerId) return;
     const numeric = Number(state.yourPrice);
-    if (Number.isNaN(numeric)) return;
-    await supabase
+    await (supabase as unknown as {
+      from: (t: string) => {
+        update: (v: Record<string, unknown>) => {
+          eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => Promise<unknown> };
+        };
+      };
+    })
       .from("price_suggestions")
       .update({ override_price: numeric, margin_pct: state.margin })
       .eq("np_sku_id", it.np_sku_id)
       .eq("partner_id", partnerId);
+  };
+
   };
 
   const offerPreview = useMemo(() => {
