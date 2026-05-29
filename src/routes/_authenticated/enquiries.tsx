@@ -99,6 +99,8 @@ interface IncomingRequestRow {
 interface Enquiry {
   id: string;
   buyer: string;
+  partnerId: string | null;
+  contactEmail: string | null;
   dateReceived: string;
   subject: string;
   productsCount: number;
@@ -126,12 +128,15 @@ function normalize(row: IncomingRequestRow): Enquiry {
   return {
     id: row.id,
     buyer: partner?.name?.trim() || "Unknown",
+    partnerId: row.partner_id,
+    contactEmail: partner?.contact_email ?? null,
     dateReceived: email?.received_at ?? row.created_at,
     subject: email?.subject?.trim() || "—",
     productsCount: (row.request_items ?? []).length,
     status: normalizeStatus(row.status),
   };
 }
+
 
 function EnquiriesPage() {
   const [status, setStatus] = useState<RequestStatus | "ALL">("ALL");
@@ -263,12 +268,15 @@ function EnquiriesPage() {
           active
             ? {
                 id: active.id,
+                partnerId: active.partnerId,
                 partnerName: active.buyer,
+                contactEmail: active.contactEmail,
                 title: active.subject,
                 titleLabel: "Subject",
                 status: active.status,
                 dateReceived: active.dateReceived,
               }
+
             : null
         }
         onOpenChange={(o) => !o && setActive(null)}

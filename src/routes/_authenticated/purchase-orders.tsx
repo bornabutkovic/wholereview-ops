@@ -106,6 +106,7 @@ interface IncomingRequestRow {
 interface PurchaseOrder {
   id: string;
   buyer: string;
+  partnerId: string | null;
   country: string | null;
   contactEmail: string | null;
   poNumber: string | null;
@@ -117,6 +118,7 @@ interface PurchaseOrder {
   status: RequestStatus;
   items: RequestItemRow[];
 }
+
 
 function normalizeStatus(s: string | null | undefined): RequestStatus {
   const v = (s ?? "").toUpperCase();
@@ -142,7 +144,9 @@ function normalize(row: IncomingRequestRow): PurchaseOrder {
   return {
     id: row.id,
     buyer,
+    partnerId: row.partner_id,
     country: partner?.country ?? null,
+
     contactEmail: partner?.contact_email ?? null,
     poNumber: row.po_number,
     subject: email?.subject ?? null,
@@ -298,12 +302,15 @@ function PurchaseOrdersPage() {
           active
             ? {
                 id: active.id,
+                partnerId: active.partnerId,
                 partnerName: active.buyer,
+                contactEmail: active.contactEmail,
                 title: active.poNumber ?? "—",
                 titleLabel: "PO Number",
                 status: active.status,
                 dateReceived: active.dateReceived,
               }
+
             : null
         }
         onOpenChange={(o) => !o && setActive(null)}
