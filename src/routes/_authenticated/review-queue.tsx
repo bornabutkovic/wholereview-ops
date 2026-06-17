@@ -547,12 +547,24 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
             value={partnerId}
             onChange={setPartnerId}
           />
-          {unknownEmail && (
-            <p className="text-[11px] text-muted-foreground">
-              <span className="font-mono">{unknownEmail}</span> will be added as
-              an additional contact for this partner.
-            </p>
-          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="email-to-assign" className="text-xs">
+            Email za dodijeliti partneru
+          </Label>
+          <Input
+            id="email-to-assign"
+            type="email"
+            value={emailToAssign}
+            onChange={(e) => setEmailToAssign(e.target.value)}
+            placeholder="partner@example.com"
+            className="font-mono text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            This will be saved as the partner's primary contact email.
+          </p>
+
 
         </div>
       </div>
