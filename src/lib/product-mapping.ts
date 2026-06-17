@@ -1,6 +1,6 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase, type NpSkuDetails, type Partner } from "./supabase";
-import { resolveReviewItem } from "./review-queue";
+import { resolveReviewItem, reopenReviewItem } from "./review-queue";
 
 // ---------------------------------------------------------------------------
 // Queries
