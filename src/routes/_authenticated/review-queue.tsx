@@ -181,6 +181,11 @@ function ReviewQueuePage() {
               placeholder="Search description…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
               className="h-8 w-[240px] pl-8 text-xs"
             />
           </div>
@@ -468,7 +473,18 @@ function GenericBody(props: GenericBodyProps) {
               placeholder="Describe how this was resolved…"
               value={note}
               onChange={(e) => setNote(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  if (note.trim() && !mutation.isPending) {
+                    mutation.mutate("RESOLVED");
+                  }
+                }
+              }}
             />
+            <p className="text-[11px] text-muted-foreground">
+              Press Cmd/Ctrl + Enter to submit
+            </p>
           </div>
         )}
       </div>
