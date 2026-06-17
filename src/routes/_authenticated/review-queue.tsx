@@ -470,6 +470,8 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
   const partners = usePartners({ buyersOnly: true });
   const assign = useAssignPartner();
   const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [emailToAssign, setEmailToAssign] = useState<string>("");
+
 
   const payload: PartnerUnknownPayload =
     item.payload && typeof item.payload === "object"
