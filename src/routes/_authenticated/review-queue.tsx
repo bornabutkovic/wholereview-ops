@@ -116,11 +116,14 @@ function ReviewQueuePage() {
   const [category, setCategory] = useState<ReviewCategory | "ALL">("ALL");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<ReviewItem | null>(null);
+  const [reopenItem, setReopenItem] = useState<ReviewItem | null>(null);
 
   const query = useQuery({
     queryKey: ["review-queue", status, category],
     queryFn: () => listReviewItems({ status, category }),
   });
+
+  const reopen = useReopenReviewItem();
 
   const filtered = useMemo(() => {
     const items = query.data ?? [];
