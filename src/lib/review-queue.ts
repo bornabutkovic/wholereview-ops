@@ -43,3 +43,24 @@ export async function resolveReviewItem(params: {
     );
   }
 }
+
+export async function reopenReviewItem(params: {
+  id: string;
+}): Promise<void> {
+  const { data, error } = await supabase
+    .from("review_queue")
+    .update({
+      status: "OPEN",
+      resolution_note: null,
+      resolved_at: null,
+      resolved_by: null,
+    })
+    .eq("id", params.id)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      "Reopen returned 0 rows — likely missing RLS UPDATE policy on review_queue.",
+    );
+  }
+}

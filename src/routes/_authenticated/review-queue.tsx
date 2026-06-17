@@ -13,6 +13,7 @@ import {
   useNpSkuList,
   usePartners,
   useRejectMapping,
+  useReopenReviewItem,
 } from "@/lib/product-mapping";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -52,6 +53,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Command,
   CommandEmpty,
@@ -105,11 +116,14 @@ function ReviewQueuePage() {
   const [category, setCategory] = useState<ReviewCategory | "ALL">("ALL");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<ReviewItem | null>(null);
+  const [reopenItem, setReopenItem] = useState<ReviewItem | null>(null);
 
   const query = useQuery({
     queryKey: ["review-queue", status, category],
     queryFn: () => listReviewItems({ status, category }),
   });
+
+  const reopen = useReopenReviewItem();
 
   const filtered = useMemo(() => {
     const items = query.data ?? [];
@@ -237,8 +251,12 @@ function ReviewQueuePage() {
                           Resolve
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost" onClick={() => setActive(item)}>
-                          View
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setReopenItem(item)}
+                        >
+                          Reopen
                         </Button>
                       )}
                     </TableCell>
@@ -258,6 +276,33 @@ function ReviewQueuePage() {
           }}
           userId={user?.id ?? null}
         />
+
+        <AlertDialog open={!!reopenItem} onOpenChange={(open) => { if (!open) setReopenItem(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reopen this item?</AlertDialogTitle>
+              <AlertDialogDescription>
+                The current resolution note will be cleared.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setReopenItem(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (!reopenItem) return;
+                  try {
+                    await reopen.mutateAsync({ id: reopenItem.id });
+                    setReopenItem(null);
+                  } catch {
+                    // error already toasted by mutation
+                  }
+                }}
+              >
+                Reopen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       </div>
     </TooltipProvider>

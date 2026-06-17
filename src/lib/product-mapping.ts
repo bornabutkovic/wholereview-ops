@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase, type NpSkuDetails, type Partner } from "./supabase";
-import { resolveReviewItem } from "./review-queue";
+import { resolveReviewItem, reopenReviewItem } from "./review-queue";
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -339,5 +340,19 @@ export function useRejectMapping() {
         userId: args.userId,
       });
     },
+  });
+}
+
+export function useReopenReviewItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string }) => {
+      await reopenReviewItem({ id: args.id });
+    },
+    onSuccess: () => {
+      toast.success("Item moved back to Open");
+      qc.invalidateQueries({ queryKey: ["review-queue"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
