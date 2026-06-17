@@ -341,3 +341,17 @@ export function useRejectMapping() {
     },
   });
 }
+
+export function useReopenReviewItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string }) => {
+      await reopenReviewItem({ id: args.id });
+    },
+    onSuccess: () => {
+      toast.success("Item moved back to Open");
+      qc.invalidateQueries({ queryKey: ["review-queue"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
