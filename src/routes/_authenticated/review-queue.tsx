@@ -578,7 +578,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
           {dismiss.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
           Dismiss
         </Button>
-        <Button disabled={!partnerId || assign.isPending} onClick={handleLink}>
+        <Button disabled={!partnerId || !emailToAssign.trim() || assign.isPending} onClick={handleLink}>
           {assign.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
           Link to Partner
         </Button>
