@@ -468,7 +468,18 @@ function GenericBody(props: GenericBodyProps) {
               placeholder="Describe how this was resolved…"
               value={note}
               onChange={(e) => setNote(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  if (note.trim() && !mutation.isPending) {
+                    mutation.mutate("RESOLVED");
+                  }
+                }
+              }}
             />
+            <p className="text-[11px] text-muted-foreground">
+              Press Cmd/Ctrl + Enter to submit
+            </p>
           </div>
         )}
       </div>
