@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, ChevronsUpDown } from "lucide-react";
@@ -470,6 +470,8 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
   const partners = usePartners({ buyersOnly: true });
   const assign = useAssignPartner();
   const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [emailToAssign, setEmailToAssign] = useState<string>("");
+
 
   const payload: PartnerUnknownPayload =
     item.payload && typeof item.payload === "object"
@@ -479,6 +481,11 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
   const unknownEmail =
     payload.from_address?.trim() || extractEmail(item.description ?? "") || "";
   const emailLogId = payload.email_log_id ?? null;
+
+  // Pre-fill editable email input with from_address when item changes
+  useEffect(() => setEmailToAssign(unknownEmail), [item.id, unknownEmail]);
+
+
 
   const dismiss = useMutation({
     mutationFn: () =>
@@ -506,7 +513,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
       const result = await assign.mutateAsync({
         partnerId: selectedPartner.partner_id,
         partnerName: selectedPartner.name || selectedPartner.partner_id,
-        fromAddress: unknownEmail || null,
+        fromAddress: emailToAssign.trim() || null,
         emailLogId,
         reviewItemId: item.id,
         userId,
@@ -540,12 +547,24 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
             value={partnerId}
             onChange={setPartnerId}
           />
-          {unknownEmail && (
-            <p className="text-[11px] text-muted-foreground">
-              <span className="font-mono">{unknownEmail}</span> will be added as
-              an additional contact for this partner.
-            </p>
-          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="email-to-assign" className="text-xs">
+            Email za dodijeliti partneru
+          </Label>
+          <Input
+            id="email-to-assign"
+            type="email"
+            value={emailToAssign}
+            onChange={(e) => setEmailToAssign(e.target.value)}
+            placeholder="partner@example.com"
+            className="font-mono text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            This will be saved as the partner's primary contact email.
+          </p>
+
 
         </div>
       </div>
@@ -559,7 +578,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
           {dismiss.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
           Dismiss
         </Button>
-        <Button disabled={!partnerId || assign.isPending} onClick={handleLink}>
+        <Button disabled={!partnerId || !emailToAssign.trim() || assign.isPending} onClick={handleLink}>
           {assign.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
           Link to Partner
         </Button>

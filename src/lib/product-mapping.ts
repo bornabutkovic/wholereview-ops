@@ -104,23 +104,13 @@ export function useAssignPartner() {
     mutationFn: async (args: AssignPartnerArgs): Promise<AssignPartnerResult> => {
       const trimmedEmail = args.fromAddress?.trim() || null;
       if (trimmedEmail) {
-        // Insert into partner_contacts (non-primary). Don't overwrite the
-        // partner's main contact_email — that stays as the primary contact.
-        const { error } = await (supabase as unknown as {
-          from: (t: string) => {
-            upsert: (
-              v: Record<string, unknown>,
-              opts?: { onConflict?: string; ignoreDuplicates?: boolean },
-            ) => Promise<{ error: { message: string } | null }>;
-          };
-        })
-          .from("partner_contacts")
-          .upsert(
-            { partner_id: args.partnerId, email: trimmedEmail, is_primary: false },
-            { onConflict: "partner_id,email", ignoreDuplicates: true },
-          );
-        if (error) throw new Error(error.message);
+        const { error } = await supabase
+          .from("partner")
+          .update({ contact_email: trimmedEmail })
+          .eq("partner_id", args.partnerId);
+        if (error) throw error;
       }
+
 
 
       let matched = 0;
