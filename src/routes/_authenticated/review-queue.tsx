@@ -482,6 +482,10 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
     payload.from_address?.trim() || extractEmail(item.description ?? "") || "";
   const emailLogId = payload.email_log_id ?? null;
 
+  // Pre-fill editable email input with from_address when item changes
+  useMemoOnce(() => setEmailToAssign(unknownEmail), [item.id]);
+
+
   const dismiss = useMutation({
     mutationFn: () =>
       resolveReviewItem({
