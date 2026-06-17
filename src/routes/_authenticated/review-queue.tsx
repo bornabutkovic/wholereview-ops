@@ -181,6 +181,11 @@ function ReviewQueuePage() {
               placeholder="Search description…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
               className="h-8 w-[240px] pl-8 text-xs"
             />
           </div>
