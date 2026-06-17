@@ -1,19 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import {
-  Inbox,
-  ListChecks,
-  Boxes,
-  Users,
-  Package,
-  FileText,
-} from "lucide-react";
+import { Inbox, ListChecks, Boxes, Users, ArrowUpRight } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -31,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/")({
 // KPI fetch helpers
 // ---------------------------------------------------------------------------
 
-async function countOpenRequests() {
+async function countOpenRequests(): Promise<number> {
   const { count, error } = await supabase
     .from("incoming_requests")
     .select("*", { count: "exact", head: true })
@@ -40,7 +39,7 @@ async function countOpenRequests() {
   return count ?? 0;
 }
 
-async function countReviewQueue() {
+async function countReviewQueue(): Promise<number> {
   const { count, error } = await supabase
     .from("review_queue")
     .select("*", { count: "exact", head: true })
@@ -49,37 +48,34 @@ async function countReviewQueue() {
   return count ?? 0;
 }
 
-async function countActiveSkus() {
-  const { count, error } = await supabase
-    .from("np_sku")
-    .select("np_sku_id", { count: "exact", head: true })
-    .eq("status", "ACTIVE");
-  if (error) throw error;
+async function countWarehouseLines(): Promise<number> {
+  const { count, error } = await (
+    supabase as unknown as {
+      from: (t: string) => {
+        select: (
+          c: string,
+          o: { count: "exact"; head: true },
+        ) => {
+          eq: (
+            col: string,
+            val: boolean,
+          ) => Promise<{ count: number | null; error: unknown }>;
+        };
+      };
+    }
+  )
+    .from("stock_entries")
+    .select("*", { count: "exact", head: true })
+    .eq("warehouse_confirmed", true);
+  if (error) throw error as Error;
   return count ?? 0;
 }
 
-async function countBuyerPartners() {
+async function countActivePartners(): Promise<number> {
   const { count, error } = await supabase
     .from("partner")
     .select("partner_id", { count: "exact", head: true })
-    .eq("is_buyer", true);
-  if (error) throw error;
-  return count ?? 0;
-}
-
-async function countReceivedBatches() {
-  const { count, error } = await supabase
-    .from("batch")
-    .select("*", { count: "exact", head: true });
-  if (error) throw error;
-  return count ?? 0;
-}
-
-async function countPendingOffers() {
-  const { count, error } = await supabase
-    .from("supplier_offers")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "pending_review");
+    .or("is_buyer.eq.true,is_supplier.eq.true");
   if (error) throw error;
   return count ?? 0;
 }
@@ -99,48 +95,38 @@ function DashboardPage() {
       </header>
 
       <div className="flex-1 space-y-6 p-6">
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            label="Open Requests"
+            label="Open requests"
             icon={Inbox}
+            to="/requests"
             queryKey={["kpi", "open-requests"]}
             queryFn={countOpenRequests}
             accent="text-blue-600"
           />
           <KpiCard
-            label="Review Queue"
+            label="Items in review"
             icon={ListChecks}
+            to="/review-queue"
             queryKey={["kpi", "review-open"]}
             queryFn={countReviewQueue}
             accent="text-amber-600"
           />
           <KpiCard
-            label="Products in Catalogue"
+            label="Lines in warehouse"
             icon={Boxes}
-            queryKey={["kpi", "active-skus"]}
-            queryFn={countActiveSkus}
+            to="/stock"
+            queryKey={["kpi", "warehouse-lines"]}
+            queryFn={countWarehouseLines}
             accent="text-emerald-600"
           />
           <KpiCard
-            label="Partners"
+            label="Active partners"
             icon={Users}
-            queryKey={["kpi", "buyer-partners"]}
-            queryFn={countBuyerPartners}
+            to="/partners"
+            queryKey={["kpi", "active-partners"]}
+            queryFn={countActivePartners}
             accent="text-purple-600"
-          />
-          <KpiCard
-            label="Batches in Warehouse"
-            icon={Package}
-            queryKey={["kpi", "received-batches"]}
-            queryFn={countReceivedBatches}
-            accent="text-teal-600"
-          />
-          <KpiCard
-            label="Supplier Offers Pending"
-            icon={FileText}
-            queryKey={["kpi", "offers-pending"]}
-            queryFn={countPendingOffers}
-            accent="text-orange-600"
           />
         </section>
 
@@ -165,39 +151,58 @@ function DashboardPage() {
 interface KpiCardProps {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  to: "/requests" | "/review-queue" | "/stock" | "/partners";
   queryKey: readonly unknown[];
   queryFn: () => Promise<number>;
   accent: string;
 }
 
 function KpiCard(props: KpiCardProps) {
-  const { label, icon: Icon, queryKey, queryFn, accent } = props;
-  const { data, isLoading, error } = useQuery({ queryKey, queryFn });
+  const { label, icon: Icon, to, queryKey, queryFn, accent } = props;
+  const { data, isLoading, error } = useQuery({
+    queryKey,
+    queryFn,
+    staleTime: 60_000,
+  });
+
+  const valueNode = isLoading ? (
+    <Skeleton className="mt-2 h-8 w-16" />
+  ) : error ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <p className="mt-1 cursor-help text-2xl font-semibold tabular-nums text-muted-foreground">
+            —
+          </p>
+        </TooltipTrigger>
+        <TooltipContent>Could not load metric</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : (
+    <p className="mt-1 text-2xl font-semibold tabular-nums">
+      {(data ?? 0).toLocaleString()}
+    </p>
+  );
 
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
-          {isLoading ? (
-            <Skeleton className="mt-2 h-8 w-16" />
-          ) : error ? (
-            <p className="mt-1 text-xs text-destructive">Error</p>
-          ) : (
-            <p className="mt-1 text-2xl font-semibold tabular-nums">
-              {(data ?? 0).toLocaleString()}
+    <Link to={to} className="group block">
+      <Card className="relative p-4 transition-colors group-hover:border-primary/60">
+        <ArrowUpRight className="absolute right-2 top-2 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {label}
             </p>
-          )}
+            {valueNode}
+          </div>
+          <div
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted ${accent}`}
+          >
+            <Icon className="h-4 w-4" />
+          </div>
         </div>
-        <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted ${accent}`}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
 }
 
