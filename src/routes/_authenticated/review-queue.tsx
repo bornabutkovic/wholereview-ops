@@ -513,7 +513,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
       const result = await assign.mutateAsync({
         partnerId: selectedPartner.partner_id,
         partnerName: selectedPartner.name || selectedPartner.partner_id,
-        fromAddress: unknownEmail || null,
+        fromAddress: emailToAssign.trim() || null,
         emailLogId,
         reviewItemId: item.id,
         userId,
