@@ -251,8 +251,12 @@ function ReviewQueuePage() {
                           Resolve
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost" onClick={() => setActive(item)}>
-                          View
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setReopenItem(item)}
+                        >
+                          Reopen
                         </Button>
                       )}
                     </TableCell>
@@ -272,6 +276,33 @@ function ReviewQueuePage() {
           }}
           userId={user?.id ?? null}
         />
+
+        <AlertDialog open={!!reopenItem} onOpenChange={(open) => { if (!open) setReopenItem(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reopen this item?</AlertDialogTitle>
+              <AlertDialogDescription>
+                The current resolution note will be cleared.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setReopenItem(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (!reopenItem) return;
+                  try {
+                    await reopen.mutateAsync({ id: reopenItem.id });
+                    setReopenItem(null);
+                  } catch {
+                    // error already toasted by mutation
+                  }
+                }}
+              >
+                Reopen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       </div>
     </TooltipProvider>
