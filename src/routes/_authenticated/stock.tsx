@@ -177,43 +177,45 @@ function useBatches() {
 
 function StockPage() {
   return (
-    <div className="flex h-full flex-col">
-      <header className="border-b px-6 py-4">
-        <h1 className="text-lg font-semibold tracking-tight">Stock</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Warehouse batches and virtual stock
-        </p>
-      </header>
+    <TooltipProvider delayDuration={150}>
+      <div className="flex h-full flex-col">
+        <header className="border-b px-6 py-4">
+          <h1 className="text-lg font-semibold tracking-tight">Stock</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Warehouse batches and virtual stock
+          </p>
+        </header>
 
-      <Tabs defaultValue="warehouse" className="flex flex-1 flex-col">
-        <div className="border-b px-6 pt-3">
-          <TabsList>
-            <TabsTrigger value="warehouse" className="text-xs">
-              Warehouse Batches
-            </TabsTrigger>
-            <TabsTrigger value="virtual" className="text-xs">
-              Virtual Stock
-            </TabsTrigger>
-            <TabsTrigger value="allocation" className="text-xs">
-              Allocation
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <Tabs defaultValue="warehouse" className="flex flex-1 flex-col">
+          <div className="border-b px-6 pt-3">
+            <TabsList>
+              <TabsTrigger value="warehouse" className="text-xs">
+                Warehouse Batches
+              </TabsTrigger>
+              <TabsTrigger value="virtual" className="text-xs">
+                Virtual Stock
+              </TabsTrigger>
+              <TabsTrigger value="allocation" className="text-xs">
+                Allocation
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-        <TabsContent value="warehouse" className="flex-1 overflow-auto p-6 pt-4">
-          <WarehouseBatches />
-        </TabsContent>
+          <TabsContent value="warehouse" className="flex-1 overflow-auto p-6 pt-4">
+            <WarehouseBatches />
+          </TabsContent>
 
-        <TabsContent value="virtual" className="flex-1 overflow-auto p-6 pt-4">
-          <VirtualStockPlaceholder />
-        </TabsContent>
+          <TabsContent value="virtual" className="flex-1 overflow-auto p-6 pt-4">
+            <VirtualStockPlaceholder />
+          </TabsContent>
 
-        <TabsContent value="allocation" className="flex-1 overflow-auto p-6 pt-4">
-          <AllocationTab />
-        </TabsContent>
+          <TabsContent value="allocation" className="flex-1 overflow-auto p-6 pt-4">
+            <AllocationTab />
+          </TabsContent>
 
-      </Tabs>
-    </div>
+        </Tabs>
+      </div>
+    </TooltipProvider>
   );
 }
 
