@@ -262,6 +262,9 @@ function WarehouseBatches() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
             placeholder="Search product or lot number..."
             className="pl-8 h-9 text-sm"
           />
