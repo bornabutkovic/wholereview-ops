@@ -175,6 +175,7 @@ export function RequestDetailSheet({
             margin: 11,
             yourPrice: s.suggested_price != null ? String(s.suggested_price) : "",
             suggestedPrice: s.suggested_price ?? null,
+            impliedMargin: null,
           };
         }
       });
@@ -212,20 +213,36 @@ export function RequestDetailSheet({
         suggestedPrice: recalculated ?? prev[it.id]?.suggestedPrice ?? null,
         yourPrice:
           recalculated != null ? String(recalculated) : (prev[it.id]?.yourPrice ?? ""),
+        impliedMargin: null,
       },
     }));
   };
 
   const updateYourPrice = (it: RequestItem, value: string) => {
+    const idx = itemList.indexOf(it);
+    const s = suggestionQueries[idx]?.data;
+    const max = s?.max_historical_price ?? null;
+    const numericPrice = Number(value);
+    let nextMargin: Margin | undefined;
+    let impliedMargin: number | null = null;
+    if (max != null && max > 0 && value !== "" && !Number.isNaN(numericPrice)) {
+      const implied = Math.round((numericPrice / max - 1) * 100);
+      impliedMargin = implied;
+      if ((MARGIN_OPTIONS as readonly number[]).includes(implied)) {
+        nextMargin = implied as Margin;
+      }
+    }
     setPriceState((prev) => ({
       ...prev,
       [it.id]: {
-        margin: prev[it.id]?.margin ?? 11,
+        margin: nextMargin ?? prev[it.id]?.margin ?? 11,
         suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
         yourPrice: value,
+        impliedMargin: nextMargin != null ? null : impliedMargin,
       },
     }));
   };
+
 
   const persistOverride = async (it: RequestItem) => {
     const state = priceState[it.id];
