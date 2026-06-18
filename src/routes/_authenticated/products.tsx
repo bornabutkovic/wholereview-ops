@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Hash, Globe, Barcode, Package as PackageIcon, FileBadge, Upload, Pencil } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -491,7 +491,7 @@ function ProductEditSheet(props: { sku: Sku | null; onClose: () => void }) {
   const [form, setForm] = useState<Sku | null>(null);
 
   // Reset form when sku changes
-  useMemo(() => {
+  useEffect(() => {
     setForm(sku);
   }, [sku]);
 
