@@ -86,17 +86,27 @@ const SUPPLIER_STYLES: Record<string, string> = {
   OKTAL: "bg-purple-50 text-purple-700 border-purple-200",
 };
 
-function SupplierBadge({ code }: { code: string | null }) {
+function SupplierBadge({ name, code }: { name?: string | null; code?: string | null }) {
   const upper = (code ?? "").toUpperCase();
+  const label = name || code || "—";
   return (
-    <Badge
-      variant="outline"
-      className={`text-xs font-medium ${
-        SUPPLIER_STYLES[upper] ?? "bg-slate-100 text-slate-600 border-slate-200"
-      }`}
-    >
-      {upper || "—"}
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="outline"
+          className={`text-xs font-medium cursor-default ${
+            SUPPLIER_STYLES[upper] ?? "bg-slate-100 text-slate-600 border-slate-200"
+          }`}
+        >
+          {label}
+        </Badge>
+      </TooltipTrigger>
+      {code && (
+        <TooltipContent side="top">
+          <span className="text-xs">Code: {code}</span>
+        </TooltipContent>
+      )}
+    </Tooltip>
   );
 }
 
