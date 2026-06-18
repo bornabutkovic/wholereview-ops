@@ -187,6 +187,8 @@ function ProductsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [selected, setSelected] = useState<Sku | null>(null);
+  const [editing, setEditing] = useState<Sku | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data, isLoading, error } = useSkus();
 
@@ -207,11 +209,17 @@ function ProductsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b px-6 py-4">
-        <h1 className="text-lg font-semibold tracking-tight">Products</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Product catalogue (SKU registry)
-        </p>
+      <header className="flex items-center justify-between border-b px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Products</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Product catalogue (SKU registry)
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
+          <Upload className="h-3.5 w-3.5" />
+          Import katalog (Excel)
+        </Button>
       </header>
 
       <div className="flex-1 overflow-auto p-6 space-y-3">
@@ -258,26 +266,27 @@ function ProductsPage() {
                 <TableHead className="w-[120px]">Origin</TableHead>
                 <TableHead className="w-[160px]">EAN</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
+                <TableHead className="w-[70px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={8}>
+                    <TableCell colSpan={9}>
                       <Skeleton className="h-5 w-full" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-sm text-destructive">
+                  <TableCell colSpan={9} className="text-center text-sm text-destructive">
                     {(error as Error).message}
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
                     No products found
                   </TableCell>
                 </TableRow>
@@ -308,6 +317,20 @@ function ProductsPage() {
                     <TableCell>
                       <StatusBadge status={s.status} />
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 px-2 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditing(s);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                        Edit
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
 
@@ -318,6 +341,255 @@ function ProductsPage() {
       </div>
 
       <ProductDetailSheet sku={selected} onClose={() => setSelected(null)} />
+      <ProductEditSheet sku={editing} onClose={() => setEditing(null)} />
+      <ImportCatalogDialog open={importOpen} onOpenChange={setImportOpen} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Import dialog
+// ---------------------------------------------------------------------------
+
+function ImportCatalogDialog(props: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { open, onOpenChange } = props;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [rows, setRows] = useState<ImportRow[] | null>(null);
+  const [parsing, setParsing] = useState(false);
+
+  function reset() {
+    setFileName(null);
+    setRows(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function handlePreview() {
+    const file = fileRef.current?.files?.[0];
+    if (!file) {
+      toast.error("Choose an .xlsx file first");
+      return;
+    }
+    setParsing(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+      const normalized: ImportRow[] = json.map((r) => {
+        const out = {} as ImportRow;
+        for (const col of IMPORT_COLUMNS) {
+          out[col] = String(r[col] ?? "").trim();
+        }
+        return out;
+      });
+      setRows(normalized);
+      toast.success(`Parsed ${normalized.length} rows`);
+    } catch (e) {
+      toast.error(`Failed to parse: ${(e as Error).message}`);
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  function handleImport() {
+    if (!rows) return;
+    console.log("[Import preview]", rows);
+    toast.success(`Import will be wired in M2 — data parsed successfully (${rows.length} rows)`);
+    onOpenChange(false);
+    reset();
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (!o) reset();
+      }}
+    >
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-base">Import katalog (Excel)</DialogTitle>
+          <DialogDescription className="text-xs">
+            Upload an Excel file with columns: np_sku_id, brand, inn, pack_description,
+            gtin_ean, hr_approval_no, eu_approval_no, status. Existing SKUs (by np_sku_id)
+            will be updated, new ones will be inserted.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Excel file (.xlsx)</Label>
+            <Input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx"
+              onChange={(e) => {
+                setFileName(e.target.files?.[0]?.name ?? null);
+                setRows(null);
+              }}
+              className="h-9 text-sm"
+            />
+            {fileName && (
+              <p className="text-[11px] text-muted-foreground">{fileName}</p>
+            )}
+          </div>
+
+          {rows && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium">
+                Preview — first 10 of {rows.length} rows
+              </p>
+              <div className="max-h-[280px] overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {IMPORT_COLUMNS.map((c) => (
+                        <TableHead key={c} className="h-8 text-[10px] whitespace-nowrap">
+                          {c}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.slice(0, 10).map((r, i) => (
+                      <TableRow key={i}>
+                        {IMPORT_COLUMNS.map((c) => (
+                          <TableCell key={c} className="text-[11px] whitespace-nowrap">
+                            {r[c] || "—"}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handlePreview} disabled={parsing}>
+            {parsing ? "Parsing..." : "Preview"}
+          </Button>
+          <Button onClick={handleImport} disabled={!rows}>
+            Import
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Edit sheet
+// ---------------------------------------------------------------------------
+
+function ProductEditSheet(props: { sku: Sku | null; onClose: () => void }) {
+  const { sku, onClose } = props;
+  const [form, setForm] = useState<Sku | null>(null);
+
+  // Reset form when sku changes
+  useMemo(() => {
+    setForm(sku);
+  }, [sku]);
+
+  function update<K extends keyof Sku>(key: K, value: Sku[K]) {
+    setForm((f) => (f ? { ...f, [key]: value } : f));
+  }
+
+  function handleSave() {
+    toast.info("Editing will be wired in M2");
+    onClose();
+  }
+
+  return (
+    <Sheet open={!!sku} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto flex flex-col">
+        {form && (
+          <>
+            <SheetHeader>
+              <SheetTitle className="text-base">Edit SKU</SheetTitle>
+              <SheetDescription className="font-mono text-xs">
+                {form.np_sku_id}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="mt-6 flex-1 space-y-3">
+              <EditField label="Brand" value={form.brand} onChange={(v) => update("brand", v)} />
+              <EditField label="INN" value={form.inn} onChange={(v) => update("inn", v)} />
+              <EditField
+                label="Pack description"
+                value={form.pack_description}
+                onChange={(v) => update("pack_description", v)}
+              />
+              <EditField
+                label="Origin country"
+                value={form.origin_country}
+                onChange={(v) => update("origin_country", v)}
+              />
+              <EditField
+                label="EAN / GTIN"
+                value={form.gtin_ean}
+                onChange={(v) => update("gtin_ean", v)}
+              />
+              <EditField
+                label="HR approval no"
+                value={form.hr_approval_no}
+                onChange={(v) => update("hr_approval_no", v)}
+              />
+              <EditField
+                label="EU approval no"
+                value={form.eu_approval_no}
+                onChange={(v) => update("eu_approval_no", v)}
+              />
+              <div className="space-y-1.5">
+                <Label className="text-xs">Status</Label>
+                <Select
+                  value={(form.status ?? "").toUpperCase() || "ACTIVE"}
+                  onValueChange={(v) => update("status", v)}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                    <SelectItem value="INACTIVE">INACTIVE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <SheetFooter className="mt-4">
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>Save</Button>
+            </SheetFooter>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function EditField(props: {
+  label: string;
+  value: string | null;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{props.label}</Label>
+      <Input
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        className="h-9 text-sm"
+      />
     </div>
   );
 }
