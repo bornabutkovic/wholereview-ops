@@ -13,6 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -80,17 +86,27 @@ const SUPPLIER_STYLES: Record<string, string> = {
   OKTAL: "bg-purple-50 text-purple-700 border-purple-200",
 };
 
-function SupplierBadge({ code }: { code: string | null }) {
+function SupplierBadge({ name, code }: { name?: string | null; code?: string | null }) {
   const upper = (code ?? "").toUpperCase();
+  const label = name || code || "—";
   return (
-    <Badge
-      variant="outline"
-      className={`text-xs font-medium ${
-        SUPPLIER_STYLES[upper] ?? "bg-slate-100 text-slate-600 border-slate-200"
-      }`}
-    >
-      {upper || "—"}
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="outline"
+          className={`text-xs font-medium cursor-default ${
+            SUPPLIER_STYLES[upper] ?? "bg-slate-100 text-slate-600 border-slate-200"
+          }`}
+        >
+          {label}
+        </Badge>
+      </TooltipTrigger>
+      {code && (
+        <TooltipContent side="top">
+          <span className="text-xs">Code: {code}</span>
+        </TooltipContent>
+      )}
+    </Tooltip>
   );
 }
 
@@ -161,43 +177,45 @@ function useBatches() {
 
 function StockPage() {
   return (
-    <div className="flex h-full flex-col">
-      <header className="border-b px-6 py-4">
-        <h1 className="text-lg font-semibold tracking-tight">Stock</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Warehouse batches and virtual stock
-        </p>
-      </header>
+    <TooltipProvider delayDuration={150}>
+      <div className="flex h-full flex-col">
+        <header className="border-b px-6 py-4">
+          <h1 className="text-lg font-semibold tracking-tight">Stock</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Warehouse batches and virtual stock
+          </p>
+        </header>
 
-      <Tabs defaultValue="warehouse" className="flex flex-1 flex-col">
-        <div className="border-b px-6 pt-3">
-          <TabsList>
-            <TabsTrigger value="warehouse" className="text-xs">
-              Warehouse Batches
-            </TabsTrigger>
-            <TabsTrigger value="virtual" className="text-xs">
-              Virtual Stock
-            </TabsTrigger>
-            <TabsTrigger value="allocation" className="text-xs">
-              Allocation
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <Tabs defaultValue="warehouse" className="flex flex-1 flex-col">
+          <div className="border-b px-6 pt-3">
+            <TabsList>
+              <TabsTrigger value="warehouse" className="text-xs">
+                Warehouse Batches
+              </TabsTrigger>
+              <TabsTrigger value="virtual" className="text-xs">
+                Virtual Stock
+              </TabsTrigger>
+              <TabsTrigger value="allocation" className="text-xs">
+                Allocation
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-        <TabsContent value="warehouse" className="flex-1 overflow-auto p-6 pt-4">
-          <WarehouseBatches />
-        </TabsContent>
+          <TabsContent value="warehouse" className="flex-1 overflow-auto p-6 pt-4">
+            <WarehouseBatches />
+          </TabsContent>
 
-        <TabsContent value="virtual" className="flex-1 overflow-auto p-6 pt-4">
-          <VirtualStockPlaceholder />
-        </TabsContent>
+          <TabsContent value="virtual" className="flex-1 overflow-auto p-6 pt-4">
+            <VirtualStockPlaceholder />
+          </TabsContent>
 
-        <TabsContent value="allocation" className="flex-1 overflow-auto p-6 pt-4">
-          <AllocationTab />
-        </TabsContent>
+          <TabsContent value="allocation" className="flex-1 overflow-auto p-6 pt-4">
+            <AllocationTab />
+          </TabsContent>
 
-      </Tabs>
-    </div>
+        </Tabs>
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -341,7 +359,7 @@ function BatchRow({ batch: b }: { batch: Batch }) {
       <TableCell className="font-mono text-xs">{b.np_sku_id ?? "—"}</TableCell>
       <TableCell className="font-medium text-sm">{b.product_name ?? "—"}</TableCell>
       <TableCell>
-        <SupplierBadge code={b.supplier_code ?? b.supplier_name} />
+        <SupplierBadge name={b.supplier_name} code={b.supplier_code} />
       </TableCell>
       <TableCell className="font-mono text-xs">{b.lot_number ?? "—"}</TableCell>
       <TableCell
