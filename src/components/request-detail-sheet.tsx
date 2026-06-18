@@ -37,6 +37,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export interface RequestDetailContext {
   id: string;
@@ -98,6 +104,8 @@ interface ItemPriceState {
   yourPrice: string;
   // baseline price returned by edge fn (for default if user changes margin)
   suggestedPrice: number | null;
+  // implied margin derived from yourPrice; null when no max_historical_price
+  impliedMargin: number | null;
 }
 
 export function RequestDetailSheet({
@@ -167,6 +175,7 @@ export function RequestDetailSheet({
             margin: 11,
             yourPrice: s.suggested_price != null ? String(s.suggested_price) : "",
             suggestedPrice: s.suggested_price ?? null,
+            impliedMargin: null,
           };
         }
       });
@@ -204,20 +213,36 @@ export function RequestDetailSheet({
         suggestedPrice: recalculated ?? prev[it.id]?.suggestedPrice ?? null,
         yourPrice:
           recalculated != null ? String(recalculated) : (prev[it.id]?.yourPrice ?? ""),
+        impliedMargin: null,
       },
     }));
   };
 
   const updateYourPrice = (it: RequestItem, value: string) => {
+    const idx = itemList.indexOf(it);
+    const s = suggestionQueries[idx]?.data;
+    const max = s?.max_historical_price ?? null;
+    const numericPrice = Number(value);
+    let nextMargin: Margin | undefined;
+    let impliedMargin: number | null = null;
+    if (max != null && max > 0 && value !== "" && !Number.isNaN(numericPrice)) {
+      const implied = Math.round((numericPrice / max - 1) * 100);
+      impliedMargin = implied;
+      if ((MARGIN_OPTIONS as readonly number[]).includes(implied)) {
+        nextMargin = implied as Margin;
+      }
+    }
     setPriceState((prev) => ({
       ...prev,
       [it.id]: {
-        margin: prev[it.id]?.margin ?? 11,
+        margin: nextMargin ?? prev[it.id]?.margin ?? 11,
         suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
         yourPrice: value,
+        impliedMargin: nextMargin != null ? null : impliedMargin,
       },
     }));
   };
+
 
   const persistOverride = async (it: RequestItem) => {
     const state = priceState[it.id];
@@ -383,39 +408,89 @@ export function RequestDetailSheet({
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Select
-                                  value={String(ps?.margin ?? 11)}
-                                  onValueChange={(v) =>
-                                    updateMargin(it, Number(v) as Margin)
-                                  }
-                                >
-                                  <SelectTrigger className="h-8 w-[72px] text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {MARGIN_OPTIONS.map((m) => (
-                                      <SelectItem key={m} value={String(m)}>
-                                        {m}%
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    inputMode="decimal"
-                                    className="h-8 w-[100px] text-xs tabular-nums"
-                                    value={ps?.yourPrice ?? ""}
-                                    onChange={(e) => updateYourPrice(it, e.target.value)}
-                                    onBlur={() => persistOverride(it)}
-                                  />
-                                  <span className="text-[11px] text-muted-foreground">
-                                    EUR
-                                  </span>
+                                <div className="flex items-center gap-1.5">
+                                  <Select
+                                    value={
+                                      ps?.impliedMargin != null
+                                        ? ""
+                                        : String(ps?.margin ?? 11)
+                                    }
+                                    onValueChange={(v) =>
+                                      updateMargin(it, Number(v) as Margin)
+                                    }
+                                  >
+                                    <SelectTrigger className="h-8 w-[72px] text-xs">
+                                      <SelectValue
+                                        placeholder={
+                                          ps?.impliedMargin != null ? "—" : undefined
+                                        }
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {MARGIN_OPTIONS.map((m) => (
+                                        <SelectItem key={m} value={String(m)}>
+                                          {m}%
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {ps?.impliedMargin != null && (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-amber-200 bg-amber-50 text-[10px] text-amber-800"
+                                    >
+                                      Custom: {ps.impliedMargin}%
+                                    </Badge>
+                                  )}
                                 </div>
                               </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const belowCost =
+                                    ps?.impliedMargin != null && ps.impliedMargin < 0;
+                                  const input = (
+                                    <Input
+                                      type="number"
+                                      inputMode="decimal"
+                                      className={`h-8 w-[100px] text-xs tabular-nums ${
+                                        belowCost
+                                          ? "border-destructive focus-visible:ring-destructive"
+                                          : ""
+                                      }`}
+                                      value={ps?.yourPrice ?? ""}
+                                      onChange={(e) => updateYourPrice(it, e.target.value)}
+                                      onBlur={() => persistOverride(it)}
+                                    />
+                                  );
+                                  return (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-1">
+                                        {belowCost ? (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                {input}
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                Cijena je ispod nabavne — provjeri prije slanja
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        ) : (
+                                          input
+                                        )}
+                                        <span className="text-[11px] text-muted-foreground">
+                                          EUR
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Margin auto-calculates when you change the price
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+                              </TableCell>
+
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
                                 {loadingSuggestion
                                   ? "…"
