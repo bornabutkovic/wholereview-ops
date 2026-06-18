@@ -408,39 +408,89 @@ export function RequestDetailSheet({
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Select
-                                  value={String(ps?.margin ?? 11)}
-                                  onValueChange={(v) =>
-                                    updateMargin(it, Number(v) as Margin)
-                                  }
-                                >
-                                  <SelectTrigger className="h-8 w-[72px] text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {MARGIN_OPTIONS.map((m) => (
-                                      <SelectItem key={m} value={String(m)}>
-                                        {m}%
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    inputMode="decimal"
-                                    className="h-8 w-[100px] text-xs tabular-nums"
-                                    value={ps?.yourPrice ?? ""}
-                                    onChange={(e) => updateYourPrice(it, e.target.value)}
-                                    onBlur={() => persistOverride(it)}
-                                  />
-                                  <span className="text-[11px] text-muted-foreground">
-                                    EUR
-                                  </span>
+                                <div className="flex items-center gap-1.5">
+                                  <Select
+                                    value={
+                                      ps?.impliedMargin != null
+                                        ? ""
+                                        : String(ps?.margin ?? 11)
+                                    }
+                                    onValueChange={(v) =>
+                                      updateMargin(it, Number(v) as Margin)
+                                    }
+                                  >
+                                    <SelectTrigger className="h-8 w-[72px] text-xs">
+                                      <SelectValue
+                                        placeholder={
+                                          ps?.impliedMargin != null ? "—" : undefined
+                                        }
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {MARGIN_OPTIONS.map((m) => (
+                                        <SelectItem key={m} value={String(m)}>
+                                          {m}%
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {ps?.impliedMargin != null && (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-amber-200 bg-amber-50 text-[10px] text-amber-800"
+                                    >
+                                      Custom: {ps.impliedMargin}%
+                                    </Badge>
+                                  )}
                                 </div>
                               </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const belowCost =
+                                    ps?.impliedMargin != null && ps.impliedMargin < 0;
+                                  const input = (
+                                    <Input
+                                      type="number"
+                                      inputMode="decimal"
+                                      className={`h-8 w-[100px] text-xs tabular-nums ${
+                                        belowCost
+                                          ? "border-destructive focus-visible:ring-destructive"
+                                          : ""
+                                      }`}
+                                      value={ps?.yourPrice ?? ""}
+                                      onChange={(e) => updateYourPrice(it, e.target.value)}
+                                      onBlur={() => persistOverride(it)}
+                                    />
+                                  );
+                                  return (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-1">
+                                        {belowCost ? (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                {input}
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                Cijena je ispod nabavne — provjeri prije slanja
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        ) : (
+                                          input
+                                        )}
+                                        <span className="text-[11px] text-muted-foreground">
+                                          EUR
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Margin auto-calculates when you change the price
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+                              </TableCell>
+
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
                                 {loadingSuggestion
                                   ? "…"
