@@ -104,6 +104,8 @@ interface ItemPriceState {
   yourPrice: string;
   // baseline price returned by edge fn (for default if user changes margin)
   suggestedPrice: number | null;
+  // implied margin derived from yourPrice; null when no max_historical_price
+  impliedMargin: number | null;
 }
 
 export function RequestDetailSheet({
