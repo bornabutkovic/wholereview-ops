@@ -1,11 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Hash, Globe, Barcode, Package as PackageIcon, FileBadge } from "lucide-react";
+import { Search, Hash, Globe, Barcode, Package as PackageIcon, FileBadge, Upload, Pencil } from "lucide-react";
+import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -26,13 +30,35 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/products")({
   component: ProductsPage,
 });
+
+const IMPORT_COLUMNS = [
+  "np_sku_id",
+  "brand",
+  "inn",
+  "pack_description",
+  "gtin_ean",
+  "hr_approval_no",
+  "eu_approval_no",
+  "status",
+] as const;
+
+type ImportRow = Record<(typeof IMPORT_COLUMNS)[number], string>;
 
 // ---------------------------------------------------------------------------
 // Types
