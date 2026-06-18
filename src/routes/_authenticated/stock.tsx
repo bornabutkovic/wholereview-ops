@@ -357,7 +357,7 @@ function BatchRow({ batch: b }: { batch: Batch }) {
       <TableCell className="font-mono text-xs">{b.np_sku_id ?? "—"}</TableCell>
       <TableCell className="font-medium text-sm">{b.product_name ?? "—"}</TableCell>
       <TableCell>
-        <SupplierBadge code={b.supplier_code ?? b.supplier_name} />
+        <SupplierBadge name={b.supplier_name} code={b.supplier_code} />
       </TableCell>
       <TableCell className="font-mono text-xs">{b.lot_number ?? "—"}</TableCell>
       <TableCell
