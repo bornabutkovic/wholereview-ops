@@ -17,6 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,44 +38,40 @@ export const Route = createFileRoute("/_authenticated/enquiries")({
 
 const ENQUIRY_DOC_TYPES = ["ENQUIRY", "ENQUIRY_LIST", "PRICE_REQUEST_XLS"] as const;
 
-type RequestStatus =
+type EnquiryStatus =
   | "NEW"
   | "IN_REVIEW"
   | "OFFERED"
   | "CONFIRMED"
-  | "PARTIAL"
   | "REJECTED"
-  | "CLOSED";
+  | "CANCELLED";
 
-const STATUS_STYLES: Record<RequestStatus, string> = {
+const STATUS_STYLES: Record<EnquiryStatus, string> = {
   NEW: "bg-blue-50 text-blue-700 border-blue-200",
   IN_REVIEW: "bg-yellow-50 text-yellow-800 border-yellow-200",
   OFFERED: "bg-purple-50 text-purple-700 border-purple-200",
   CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  PARTIAL: "bg-orange-50 text-orange-700 border-orange-200",
   REJECTED: "bg-rose-50 text-rose-700 border-rose-200",
-  CLOSED: "bg-slate-100 text-slate-600 border-slate-200",
+  CANCELLED: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
-const STATUS_LABELS: Record<RequestStatus, string> = {
+const STATUS_LABELS: Record<EnquiryStatus, string> = {
   NEW: "new",
   IN_REVIEW: "in review",
   OFFERED: "offered",
   CONFIRMED: "confirmed",
-  PARTIAL: "partial",
   REJECTED: "rejected",
-  CLOSED: "closed",
+  CANCELLED: "cancelled",
 };
 
-const STATUS_FILTERS: { value: RequestStatus | "ALL"; label: string }[] = [
-  { value: "ALL", label: "All statuses" },
-  { value: "NEW", label: "New" },
-  { value: "IN_REVIEW", label: "In review" },
-  { value: "OFFERED", label: "Offered" },
-  { value: "CONFIRMED", label: "Confirmed" },
-  { value: "PARTIAL", label: "Partial" },
-  { value: "REJECTED", label: "Rejected" },
-  { value: "CLOSED", label: "Closed" },
+const STATUS_FILTERS: { value: EnquiryStatus | "ALL"; label: string; tooltip: string }[] = [
+  { value: "ALL", label: "All statuses", tooltip: "Show enquiries of any status" },
+  { value: "NEW", label: "New", tooltip: "Just received, not yet reviewed" },
+  { value: "IN_REVIEW", label: "In review", tooltip: "Someone is working on it" },
+  { value: "OFFERED", label: "Offered", tooltip: "Offer was sent to the buyer" },
+  { value: "CONFIRMED", label: "Confirmed", tooltip: "Buyer confirmed the offer" },
+  { value: "REJECTED", label: "Rejected", tooltip: "We declined" },
+  { value: "CANCELLED", label: "Cancelled", tooltip: "Buyer withdrew" },
 ];
 
 interface PartnerRow {
@@ -104,19 +106,18 @@ interface Enquiry {
   dateReceived: string;
   subject: string;
   productsCount: number;
-  status: RequestStatus;
+  status: EnquiryStatus;
 }
 
-function normalizeStatus(s: string | null | undefined): RequestStatus {
+function normalizeStatus(s: string | null | undefined): EnquiryStatus {
   const v = (s ?? "").toUpperCase();
   if (
     v === "NEW" ||
     v === "IN_REVIEW" ||
     v === "OFFERED" ||
     v === "CONFIRMED" ||
-    v === "PARTIAL" ||
     v === "REJECTED" ||
-    v === "CLOSED"
+    v === "CANCELLED"
   )
     return v;
   return "NEW";
@@ -139,7 +140,7 @@ function normalize(row: IncomingRequestRow): Enquiry {
 
 
 function EnquiriesPage() {
-  const [status, setStatus] = useState<RequestStatus | "ALL">("ALL");
+  const [status, setStatus] = useState<EnquiryStatus | "ALL">("NEW");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<Enquiry | null>(null);
 
@@ -186,16 +187,23 @@ function EnquiriesPage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-2 border-b px-6 py-3">
-        <Select value={status} onValueChange={(v) => setStatus(v as RequestStatus | "ALL")}>
+        <Select value={status} onValueChange={(v) => setStatus(v as EnquiryStatus | "ALL")}>
           <SelectTrigger className="h-8 w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_FILTERS.map((s) => (
-              <SelectItem key={s.value} value={s.value} className="text-xs">
-                {s.label}
-              </SelectItem>
-            ))}
+            <TooltipProvider delayDuration={100}>
+              {STATUS_FILTERS.map((s) => (
+                <SelectItem key={s.value} value={s.value} className="text-xs">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>{s.label}</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{s.tooltip}</TooltipContent>
+                  </Tooltip>
+                </SelectItem>
+              ))}
+            </TooltipProvider>
           </SelectContent>
         </Select>
 
