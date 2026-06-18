@@ -459,6 +459,9 @@ export function RequestDetailSheet({
                                       }`}
                                       value={ps?.yourPrice ?? ""}
                                       onChange={(e) => updateYourPrice(it, e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") e.currentTarget.blur();
+                                      }}
                                       onBlur={() => persistOverride(it)}
                                     />
                                   );

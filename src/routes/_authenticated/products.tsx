@@ -195,6 +195,9 @@ function ProductsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
               placeholder="Search by name or SKU ID..."
               className="pl-8 h-9 text-sm"
             />

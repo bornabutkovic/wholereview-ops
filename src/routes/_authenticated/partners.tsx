@@ -246,6 +246,9 @@ function PartnerTable(props: PartnerTableProps) {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
           placeholder="Search by name..."
           className="pl-8 h-9 text-sm"
         />
@@ -541,6 +544,12 @@ function ContactsSection({ partnerId }: { partnerId: string }) {
               <Input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                    if (!add.isPending) add.mutate();
+                  }
+                }}
                 placeholder="name@example.com"
                 className="h-9 text-sm"
               />
@@ -550,6 +559,12 @@ function ContactsSection({ partnerId }: { partnerId: string }) {
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                    if (!add.isPending) add.mutate();
+                  }
+                }}
                 className="h-9 text-sm"
               />
             </div>
@@ -558,6 +573,12 @@ function ContactsSection({ partnerId }: { partnerId: string }) {
               <Input
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                    if (!add.isPending) add.mutate();
+                  }
+                }}
                 placeholder="e.g. Procurement"
                 className="h-9 text-sm"
               />
