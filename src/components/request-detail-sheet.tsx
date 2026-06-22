@@ -222,26 +222,37 @@ export function RequestDetailSheet({
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
     const max = s?.max_historical_price ?? null;
-    const numericPrice = Number(value);
-    let nextMargin: Margin | undefined;
-    let impliedMargin: number | null = null;
-    if (max != null && max > 0 && value !== "" && !Number.isNaN(numericPrice)) {
-      const implied = Math.round((numericPrice / max - 1) * 100);
-      impliedMargin = implied;
-      if ((MARGIN_OPTIONS as readonly number[]).includes(implied)) {
-        nextMargin = implied as Margin;
+    const numeric = parseFloat(value);
+
+    setPriceState((prev) => {
+      const currentMargin = prev[it.id]?.margin ?? 11;
+      let margin: Margin = currentMargin;
+      let impliedMargin: number | null = null;
+
+      if (max != null && max > 0 && value !== "" && !Number.isNaN(numeric)) {
+        const pct = Math.round((numeric / max - 1) * 100);
+        const closest = MARGIN_OPTIONS.reduce((a, b) =>
+          Math.abs(b - pct) < Math.abs(a - pct) ? b : a
+        );
+        if (Math.abs(closest - pct) <= 1) {
+          margin = closest;
+        } else {
+          impliedMargin = pct;
+        }
       }
-    }
-    setPriceState((prev) => ({
-      ...prev,
-      [it.id]: {
-        margin: nextMargin ?? prev[it.id]?.margin ?? 11,
-        suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
-        yourPrice: value,
-        impliedMargin: nextMargin != null ? null : impliedMargin,
-      },
-    }));
+
+      return {
+        ...prev,
+        [it.id]: {
+          margin,
+          suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
+          yourPrice: value,
+          impliedMargin,
+        },
+      };
+    });
   };
+
 
 
   const persistOverride = async (it: RequestItem) => {
