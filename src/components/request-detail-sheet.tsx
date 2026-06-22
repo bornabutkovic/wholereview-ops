@@ -222,26 +222,37 @@ export function RequestDetailSheet({
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
     const max = s?.max_historical_price ?? null;
-    const numericPrice = Number(value);
-    let nextMargin: Margin | undefined;
-    let impliedMargin: number | null = null;
-    if (max != null && max > 0 && value !== "" && !Number.isNaN(numericPrice)) {
-      const implied = Math.round((numericPrice / max - 1) * 100);
-      impliedMargin = implied;
-      if ((MARGIN_OPTIONS as readonly number[]).includes(implied)) {
-        nextMargin = implied as Margin;
+    const numeric = parseFloat(value);
+
+    setPriceState((prev) => {
+      const currentMargin = prev[it.id]?.margin ?? 11;
+      let margin: Margin = currentMargin;
+      let impliedMargin: number | null = null;
+
+      if (max != null && max > 0 && value !== "" && !Number.isNaN(numeric)) {
+        const pct = Math.round((numeric / max - 1) * 100);
+        const closest = MARGIN_OPTIONS.reduce((a, b) =>
+          Math.abs(b - pct) < Math.abs(a - pct) ? b : a
+        );
+        if (Math.abs(closest - pct) <= 1) {
+          margin = closest;
+        } else {
+          impliedMargin = pct;
+        }
       }
-    }
-    setPriceState((prev) => ({
-      ...prev,
-      [it.id]: {
-        margin: nextMargin ?? prev[it.id]?.margin ?? 11,
-        suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
-        yourPrice: value,
-        impliedMargin: nextMargin != null ? null : impliedMargin,
-      },
-    }));
+
+      return {
+        ...prev,
+        [it.id]: {
+          margin,
+          suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
+          yourPrice: value,
+          impliedMargin,
+        },
+      };
+    });
   };
+
 
 
   const persistOverride = async (it: RequestItem) => {
@@ -460,7 +471,10 @@ export function RequestDetailSheet({
                                       value={ps?.yourPrice ?? ""}
                                       onChange={(e) => updateYourPrice(it, e.target.value)}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter") e.currentTarget.blur();
+                                        if (e.key === "Enter") {
+                                          e.currentTarget.blur();
+                                          persistOverride(it);
+                                        }
                                       }}
                                       onBlur={() => persistOverride(it)}
                                     />
@@ -475,7 +489,7 @@ export function RequestDetailSheet({
                                                 {input}
                                               </TooltipTrigger>
                                               <TooltipContent>
-                                                Cijena je ispod nabavne — provjeri prije slanja
+                                                Cijena ispod nabavne — provjeri!
                                               </TooltipContent>
                                             </Tooltip>
                                           </TooltipProvider>
@@ -486,13 +500,14 @@ export function RequestDetailSheet({
                                           EUR
                                         </span>
                                       </div>
-                                      <span className="text-[10px] text-muted-foreground">
-                                        Margin auto-calculates when you change the price
-                                      </span>
+                                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                                        Margin auto-updates
+                                      </p>
                                     </div>
                                   );
                                 })()}
                               </TableCell>
+
 
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
                                 {loadingSuggestion
