@@ -38,44 +38,31 @@ export const Route = createFileRoute("/_authenticated/purchase-orders")({
 
 const PO_DOC_TYPES = ["PO", "PO_XLS", "PO_PDF"] as const;
 
-type PoStatus =
-  | "NEW"
-  | "IN_REVIEW"
-  | "ALLOCATED"
-  | "ORDERED"
-  | "FULFILLED"
-  | "REJECTED"
-  | "CANCELLED";
+type PoStatus = "NEW" | "IN_REVIEW" | "CONFIRMED" | "REJECTED" | "CLOSED";
 
 const STATUS_STYLES: Record<PoStatus, string> = {
   NEW: "bg-blue-50 text-blue-700 border-blue-200",
   IN_REVIEW: "bg-yellow-50 text-yellow-800 border-yellow-200",
-  ALLOCATED: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  ORDERED: "bg-purple-50 text-purple-700 border-purple-200",
-  FULFILLED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   REJECTED: "bg-rose-50 text-rose-700 border-rose-200",
-  CANCELLED: "bg-slate-100 text-slate-600 border-slate-200",
+  CLOSED: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
 const STATUS_LABELS: Record<PoStatus, string> = {
   NEW: "new",
   IN_REVIEW: "in review",
-  ALLOCATED: "allocated",
-  ORDERED: "ordered",
-  FULFILLED: "fulfilled",
+  CONFIRMED: "confirmed",
   REJECTED: "rejected",
-  CANCELLED: "cancelled",
+  CLOSED: "closed",
 };
 
 const STATUS_FILTERS: { value: PoStatus | "ALL"; label: string; tooltip: string }[] = [
   { value: "ALL", label: "All statuses", tooltip: "Show purchase orders of any status" },
   { value: "NEW", label: "New", tooltip: "Just received, not yet reviewed" },
   { value: "IN_REVIEW", label: "In review", tooltip: "Someone is working on it" },
-  { value: "ALLOCATED", label: "Allocated", tooltip: "Goods reserved against this PO" },
-  { value: "ORDERED", label: "Ordered", tooltip: "Purchase order sent to supplier" },
-  { value: "FULFILLED", label: "Fulfilled", tooltip: "Goods delivered to buyer" },
+  { value: "CONFIRMED", label: "Confirmed", tooltip: "Buyer confirmed the offer" },
   { value: "REJECTED", label: "Rejected", tooltip: "We declined" },
-  { value: "CANCELLED", label: "Cancelled", tooltip: "Buyer withdrew" },
+  { value: "CLOSED", label: "Closed", tooltip: "Order completed or withdrawn" },
 ];
 
 interface RequestItemRow {
@@ -131,11 +118,9 @@ function normalizeStatus(s: string | null | undefined): PoStatus {
   if (
     v === "NEW" ||
     v === "IN_REVIEW" ||
-    v === "ALLOCATED" ||
-    v === "ORDERED" ||
-    v === "FULFILLED" ||
+    v === "CONFIRMED" ||
     v === "REJECTED" ||
-    v === "CANCELLED"
+    v === "CLOSED"
   )
     return v;
   return "NEW";
