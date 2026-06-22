@@ -118,11 +118,9 @@ function normalizeStatus(s: string | null | undefined): PoStatus {
   if (
     v === "NEW" ||
     v === "IN_REVIEW" ||
-    v === "ALLOCATED" ||
-    v === "ORDERED" ||
-    v === "FULFILLED" ||
+    v === "CONFIRMED" ||
     v === "REJECTED" ||
-    v === "CANCELLED"
+    v === "CLOSED"
   )
     return v;
   return "NEW";
