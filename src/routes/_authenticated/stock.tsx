@@ -86,24 +86,30 @@ const SUPPLIER_STYLES: Record<string, string> = {
   OKTAL: "bg-purple-50 text-purple-700 border-purple-200",
 };
 
-function SupplierBadge({ name, code }: { name?: string | null; code?: string | null }) {
-  const upper = (code ?? "").toUpperCase();
-  const label = name || code || "—";
+function SupplierBadge({ code }: { code?: string | null }) {
+  const value = code ?? "";
+  const lower = value.toLowerCase();
+  const isMedika = lower.includes("medika");
+  const isOktal = lower.includes("oktal");
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge
           variant="outline"
           className={`text-xs font-medium cursor-default ${
-            SUPPLIER_STYLES[upper] ?? "bg-slate-100 text-slate-600 border-slate-200"
+            isMedika
+              ? "bg-blue-50 text-blue-700 border-blue-200"
+              : isOktal
+                ? "bg-purple-50 text-purple-700 border-purple-200"
+                : "bg-slate-100 text-slate-600 border-slate-200"
           }`}
         >
-          {label}
+          {value || "—"}
         </Badge>
       </TooltipTrigger>
-      {code && (
+      {value && (
         <TooltipContent side="top">
-          <span className="text-xs">Code: {code}</span>
+          <span className="text-xs">Code: {value}</span>
         </TooltipContent>
       )}
     </Tooltip>
@@ -362,7 +368,7 @@ function BatchRow({ batch: b }: { batch: Batch }) {
       <TableCell className="font-mono text-xs">{b.np_sku_id ?? "—"}</TableCell>
       <TableCell className="font-medium text-sm">{b.product_name ?? "—"}</TableCell>
       <TableCell>
-        <SupplierBadge name={b.supplier_name} code={b.supplier_code} />
+        <SupplierBadge code={b.supplier_name ?? b.supplier_code} />
       </TableCell>
       <TableCell className="font-mono text-xs">{b.lot_number ?? "—"}</TableCell>
       <TableCell
