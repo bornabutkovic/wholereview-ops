@@ -471,7 +471,10 @@ export function RequestDetailSheet({
                                       value={ps?.yourPrice ?? ""}
                                       onChange={(e) => updateYourPrice(it, e.target.value)}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter") e.currentTarget.blur();
+                                        if (e.key === "Enter") {
+                                          e.currentTarget.blur();
+                                          persistOverride(it);
+                                        }
                                       }}
                                       onBlur={() => persistOverride(it)}
                                     />
@@ -486,7 +489,7 @@ export function RequestDetailSheet({
                                                 {input}
                                               </TooltipTrigger>
                                               <TooltipContent>
-                                                Cijena je ispod nabavne — provjeri prije slanja
+                                                Cijena ispod nabavne — provjeri!
                                               </TooltipContent>
                                             </Tooltip>
                                           </TooltipProvider>
@@ -497,13 +500,14 @@ export function RequestDetailSheet({
                                           EUR
                                         </span>
                                       </div>
-                                      <span className="text-[10px] text-muted-foreground">
-                                        Margin auto-calculates when you change the price
-                                      </span>
+                                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                                        Margin auto-updates
+                                      </p>
                                     </div>
                                   );
                                 })()}
                               </TableCell>
+
 
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
                                 {loadingSuggestion
