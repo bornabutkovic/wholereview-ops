@@ -225,29 +225,22 @@ export function RequestDetailSheet({
     const numeric = parseFloat(value);
 
     setPriceState((prev) => {
-      const currentMargin = prev[it.id]?.margin ?? 11;
-      let margin: Margin = currentMargin;
-      let impliedMargin: number | null = null;
-
-      if (max != null && max > 0 && value !== "" && !Number.isNaN(numeric)) {
+      const impliedMargin: Margin = (() => {
+        if (max == null || max === 0 || isNaN(numeric)) return prev[it.id]?.margin ?? 11;
         const pct = Math.round((numeric / max - 1) * 100);
         const closest = MARGIN_OPTIONS.reduce((a, b) =>
           Math.abs(b - pct) < Math.abs(a - pct) ? b : a
         );
-        if (Math.abs(closest - pct) <= 1) {
-          margin = closest;
-        } else {
-          impliedMargin = pct;
-        }
-      }
+        return Math.abs(closest - pct) <= 1 ? closest : (prev[it.id]?.margin ?? 11);
+      })();
 
       return {
         ...prev,
         [it.id]: {
-          margin,
+          margin: impliedMargin,
           suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
           yourPrice: value,
-          impliedMargin,
+          impliedMargin: null,
         },
       };
     });
@@ -501,7 +494,7 @@ export function RequestDetailSheet({
                                         </span>
                                       </div>
                                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                                        Margin auto-updates
+                                        Margin updates automatically
                                       </p>
                                     </div>
                                   );
