@@ -44,7 +44,7 @@ type EnquiryStatus =
   | "OFFERED"
   | "CONFIRMED"
   | "REJECTED"
-  | "CANCELLED";
+  | "CLOSED";
 
 const STATUS_STYLES: Record<EnquiryStatus, string> = {
   NEW: "bg-blue-50 text-blue-700 border-blue-200",
@@ -52,7 +52,7 @@ const STATUS_STYLES: Record<EnquiryStatus, string> = {
   OFFERED: "bg-purple-50 text-purple-700 border-purple-200",
   CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   REJECTED: "bg-rose-50 text-rose-700 border-rose-200",
-  CANCELLED: "bg-slate-100 text-slate-600 border-slate-200",
+  CLOSED: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
 const STATUS_LABELS: Record<EnquiryStatus, string> = {
@@ -61,7 +61,7 @@ const STATUS_LABELS: Record<EnquiryStatus, string> = {
   OFFERED: "offered",
   CONFIRMED: "confirmed",
   REJECTED: "rejected",
-  CANCELLED: "cancelled",
+  CLOSED: "closed",
 };
 
 const STATUS_FILTERS: { value: EnquiryStatus | "ALL"; label: string; tooltip: string }[] = [
@@ -71,7 +71,7 @@ const STATUS_FILTERS: { value: EnquiryStatus | "ALL"; label: string; tooltip: st
   { value: "OFFERED", label: "Offered", tooltip: "Offer was sent to the buyer" },
   { value: "CONFIRMED", label: "Confirmed", tooltip: "Buyer confirmed the offer" },
   { value: "REJECTED", label: "Rejected", tooltip: "We declined" },
-  { value: "CANCELLED", label: "Cancelled", tooltip: "Buyer withdrew" },
+  { value: "CLOSED", label: "Closed", tooltip: "Enquiry completed or withdrawn" },
 ];
 
 interface PartnerRow {
