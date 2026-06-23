@@ -117,7 +117,7 @@ function normalizeStatus(s: string | null | undefined): EnquiryStatus {
     v === "OFFERED" ||
     v === "CONFIRMED" ||
     v === "REJECTED" ||
-    v === "CANCELLED"
+    v === "CLOSED"
   )
     return v;
   return "NEW";
