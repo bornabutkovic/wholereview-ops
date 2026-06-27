@@ -29,6 +29,7 @@ export interface ReviewItem {
   description: string | null;
   status: ReviewStatus;
   payload: unknown;
+  item_id: string | null;
   suggested_value: string | null;
   resolution_note: string | null;
   resolved_at: string | null;

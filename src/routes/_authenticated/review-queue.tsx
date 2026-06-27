@@ -751,7 +751,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
   const matchSource = payload.match_source ?? null;
   const confidence =
     typeof payload.mapping_confidence === "number" ? payload.mapping_confidence : null;
-  const itemId = payload.item_id ?? null;
+  const itemId = payload.item_id ?? item.item_id ?? null;
   const suggestedSkuId = item.suggested_value;
 
   const skus = useNpSkuList();
