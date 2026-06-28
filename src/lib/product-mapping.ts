@@ -110,6 +110,14 @@ export function useAssignPartner() {
           .update({ contact_email: trimmedEmail })
           .eq("partner_id", args.partnerId);
         if (error) throw error;
+
+        const { error: pcErr } = await supabase
+          .from("partner_contacts")
+          .upsert(
+            { partner_id: args.partnerId, email: trimmedEmail },
+            { onConflict: "partner_id,email" },
+          );
+        if (pcErr) throw pcErr;
       }
 
 
