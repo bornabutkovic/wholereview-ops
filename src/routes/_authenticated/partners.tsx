@@ -235,7 +235,7 @@ function PartnersPage() {
           />
         </TabsContent>
 
-        <TabsContent value="suppliers" className="flex-1 overflow-auto p-6 pt-4">
+        <TabsContent value="suppliers" className="p-6 pt-4">
           <PartnerTable
             partners={suppliers.data}
             isLoading={suppliers.isLoading}
