@@ -5,6 +5,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { AlertCircle, Check, Inbox, Search, X } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
+import { formatMoney, formatQty } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -424,15 +425,10 @@ function SupplierOffersTab() {
                     </TableCell>
 
                     <TableCell className="text-right text-[13px] tabular-nums">
-                      {(o.quantity_offered ?? 0).toLocaleString()}
+                      {formatQty(o.quantity_offered ?? 0)}
                     </TableCell>
                     <TableCell className="text-right text-[13px] tabular-nums">
-                      {o.price_per_unit != null
-                        ? `${o.price_per_unit.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })} ${o.currency ?? ""}`.trim()
-                        : "—"}
+                      {formatMoney(o.price_per_unit ?? null, o.currency ?? "")}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {o.expiry_date

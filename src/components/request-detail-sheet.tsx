@@ -4,6 +4,13 @@ import { format } from "date-fns";
 import { CheckCircle2, AlertTriangle, Send } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
+import {
+  formatMoney,
+  formatPercent,
+  formatQty,
+  parseDecimalInput,
+  toInputString,
+} from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -173,7 +180,7 @@ export function RequestDetailSheet({
         if (s && next[it.id] === undefined) {
           next[it.id] = {
             margin: 11,
-            yourPrice: s.suggested_price != null ? String(s.suggested_price) : "",
+            yourPrice: toInputString(s.suggested_price),
             suggestedPrice: s.suggested_price ?? null,
             impliedMargin: null,
           };
@@ -196,7 +203,7 @@ export function RequestDetailSheet({
     itemList.length > 0 &&
     itemList.every((it) => {
       const p = priceState[it.id]?.yourPrice;
-      return p != null && p !== "" && !Number.isNaN(Number(p));
+      return p != null && p !== "" && !Number.isNaN(parseDecimalInput(p));
     });
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -212,7 +219,7 @@ export function RequestDetailSheet({
         margin,
         suggestedPrice: recalculated ?? prev[it.id]?.suggestedPrice ?? null,
         yourPrice:
-          recalculated != null ? String(recalculated) : (prev[it.id]?.yourPrice ?? ""),
+          recalculated != null ? toInputString(recalculated) : (prev[it.id]?.yourPrice ?? ""),
         impliedMargin: null,
       },
     }));
@@ -222,25 +229,34 @@ export function RequestDetailSheet({
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
     const max = s?.max_historical_price ?? null;
-    const numeric = parseFloat(value);
+    const numeric = parseDecimalInput(value);
 
     setPriceState((prev) => {
-      const impliedMargin: Margin = (() => {
-        if (max == null || max === 0 || isNaN(numeric)) return prev[it.id]?.margin ?? 11;
-        const pct = Math.round((numeric / max - 1) * 100);
+      const previous = prev[it.id];
+      let margin: Margin = previous?.margin ?? 11;
+      let impliedMargin: number | null = null;
+
+      if (max != null && max !== 0 && !Number.isNaN(numeric)) {
+        // Always recalculate the percentage from the manually entered price.
+        const pct = Number((((numeric / max) - 1) * 100).toFixed(1));
         const closest = MARGIN_OPTIONS.reduce((a, b) =>
           Math.abs(b - pct) < Math.abs(a - pct) ? b : a
         );
-        return Math.abs(closest - pct) <= 1 ? closest : (prev[it.id]?.margin ?? 11);
-      })();
+        if (Math.abs(closest - pct) <= 1) {
+          margin = closest;
+          impliedMargin = null;
+        } else {
+          impliedMargin = pct;
+        }
+      }
 
       return {
         ...prev,
         [it.id]: {
-          margin: impliedMargin,
-          suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
+          margin,
+          suggestedPrice: previous?.suggestedPrice ?? null,
           yourPrice: value,
-          impliedMargin: null,
+          impliedMargin,
         },
       };
     });
@@ -248,10 +264,11 @@ export function RequestDetailSheet({
 
 
 
+
   const persistOverride = async (it: RequestItem) => {
     const state = priceState[it.id];
     if (!state || !it.np_sku_id || !partnerId) return;
-    const numeric = Number(state.yourPrice);
+    const numeric = parseDecimalInput(state.yourPrice);
     if (Number.isNaN(numeric)) return;
     await (supabase as unknown as {
       from: (t: string) => {
@@ -270,8 +287,13 @@ export function RequestDetailSheet({
   const offerPreview = useMemo(() => {
     if (!context) return "";
     const lines = itemList.map((it) => {
-      const p = priceState[it.id]?.yourPrice ?? "—";
-      const qty = it.qty_requested != null ? `${it.qty_requested}${it.qty_unit ? ` ${it.qty_unit}` : ""}` : "—";
+      const raw = priceState[it.id]?.yourPrice;
+      const parsed = raw != null ? parseDecimalInput(raw) : NaN;
+      const p = Number.isNaN(parsed) ? "—" : formatMoney(parsed, "");
+      const qty =
+        it.qty_requested != null
+          ? `${formatQty(it.qty_requested)}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
+          : "—";
       return `• ${it.raw_product_ref ?? it.np_sku_id ?? "Item"} — ${qty} @ ${p} EUR`;
     });
     return [
@@ -388,7 +410,7 @@ export function RequestDetailSheet({
                               </TableCell>
                               <TableCell className="text-[13px] tabular-nums">
                                 {it.qty_requested != null ? (
-                                  `${it.qty_requested}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
+                                  `${formatQty(it.qty_requested)}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
                                 ) : (
                                   <Badge
                                     variant="outline"
@@ -402,16 +424,14 @@ export function RequestDetailSheet({
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
                                 {loadingSuggestion
                                   ? "…"
-                                  : s?.last_sold_price != null
-                                    ? `${s.last_sold_price} EUR`
-                                    : "—"}
+                                  : formatMoney(s?.last_sold_price ?? null)}
                               </TableCell>
                               <TableCell>
                                 {loadingSuggestion ? (
                                   <span className="text-xs text-muted-foreground">…</span>
                                 ) : s?.suggested_price != null ? (
-                                  <Badge className="bg-blue-600 font-bold text-white hover:bg-blue-700">
-                                    {s.suggested_price} EUR
+                                  <Badge className="bg-blue-600 font-bold text-white tabular-nums hover:bg-blue-700">
+                                    {formatMoney(s.suggested_price)}
                                   </Badge>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
@@ -449,9 +469,13 @@ export function RequestDetailSheet({
                                   {ps?.impliedMargin != null && (
                                     <Badge
                                       variant="outline"
-                                      className="border-amber-200 bg-amber-50 text-[10px] text-amber-800"
+                                      className={`text-[10px] tabular-nums ${
+                                        ps.impliedMargin < 0
+                                          ? "border-rose-200 bg-rose-50 text-rose-700"
+                                          : "border-amber-200 bg-amber-50 text-amber-800"
+                                      }`}
                                     >
-                                      Custom: {ps.impliedMargin}%
+                                      Custom: {formatPercent(ps.impliedMargin)}
                                     </Badge>
                                   )}
                                 </div>
@@ -462,7 +486,7 @@ export function RequestDetailSheet({
                                     ps?.impliedMargin != null && ps.impliedMargin < 0;
                                   const input = (
                                     <Input
-                                      type="number"
+                                      type="text"
                                       inputMode="decimal"
                                       className={`h-8 w-[100px] text-xs tabular-nums ${
                                         belowCost
@@ -511,11 +535,7 @@ export function RequestDetailSheet({
 
 
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
-                                {loadingSuggestion
-                                  ? "…"
-                                  : s?.estimated_qty != null
-                                    ? s.estimated_qty
-                                    : "—"}
+                                {loadingSuggestion ? "…" : formatQty(s?.estimated_qty ?? null)}
                               </TableCell>
                             </TableRow>
                           );

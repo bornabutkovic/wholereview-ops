@@ -6,6 +6,7 @@ import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, Chev
 import { toast } from "sonner";
 
 import { listReviewItems, resolveReviewItem } from "@/lib/review-queue";
+import { formatQty } from "@/lib/format";
 import type { NpSkuDetails, Partner, PartnerUnknownPayload, ProductMatchPayload, ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
 import {
   useAssignPartner,
@@ -1025,7 +1026,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
                 <p className="text-[11px] text-muted-foreground">Tražena količina</p>
                 {context.data?.qtyRequested !== null && context.data?.qtyRequested !== undefined ? (
                   <p className="text-sm text-foreground">
-                    {`${context.data.qtyRequested}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`}
+                    {`${formatQty(context.data.qtyRequested)}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`}
                   </p>
                 ) : (
                   <Badge

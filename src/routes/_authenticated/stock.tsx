@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 
 
 import { supabase } from "@/lib/supabase";
+import { formatQty } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -379,7 +380,7 @@ function BatchRow({ batch: b }: { batch: Batch }) {
         {b.expiry_date ? format(new Date(b.expiry_date), "dd MMM yyyy") : "—"}
       </TableCell>
       <TableCell className="text-sm">
-        {b.qty_initial != null ? b.qty_initial.toLocaleString() : "—"}
+        {formatQty(b.qty_initial)}
         {b.qty_unit ? <span className="ml-1 text-muted-foreground">{b.qty_unit}</span> : null}
       </TableCell>
       <TableCell>
