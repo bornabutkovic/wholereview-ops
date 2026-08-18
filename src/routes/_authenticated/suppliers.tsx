@@ -424,15 +424,10 @@ function SupplierOffersTab() {
                     </TableCell>
 
                     <TableCell className="text-right text-[13px] tabular-nums">
-                      {(o.quantity_offered ?? 0).toLocaleString()}
+                      {formatQty(o.quantity_offered ?? 0)}
                     </TableCell>
                     <TableCell className="text-right text-[13px] tabular-nums">
-                      {o.price_per_unit != null
-                        ? `${o.price_per_unit.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })} ${o.currency ?? ""}`.trim()
-                        : "—"}
+                      {formatMoney(o.price_per_unit ?? null, o.currency ?? "")}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {o.expiry_date
