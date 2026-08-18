@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, ChevronsUpDown, ChevronRight, ChevronDown } from "lucide-react";
@@ -109,6 +109,50 @@ const STATUS_STYLES: Record<ReviewStatus, string> = {
   RESOLVED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   DISMISSED: "bg-slate-100 text-slate-600 border-slate-200",
 };
+
+type ReviewGroup = { key: string; label: string; items: ReviewItem[] };
+
+function rawInputKey(item: ReviewItem): string | null {
+  const payload =
+    item.payload && typeof item.payload === "object"
+      ? (item.payload as ProductMatchPayload)
+      : {};
+  const raw = payload.raw_input ?? payload.raw_product_ref ?? null;
+  const value = (raw ?? "").trim();
+  return value ? value.toLowerCase() : null;
+}
+
+function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
+  const groups: ReviewGroup[] = [];
+  const index = new Map<string, ReviewGroup>();
+
+  for (const item of items) {
+    const key = rawInputKey(item);
+    if (!key) {
+      groups.push({ key: item.id, label: item.description ?? "—", items: [item] });
+      continue;
+    }
+    const groupKey = `raw:${item.category}:${key}`;
+    const existing = index.get(groupKey);
+    if (existing) {
+      existing.items.push(item);
+      continue;
+    }
+    const payload =
+      item.payload && typeof item.payload === "object"
+        ? (item.payload as ProductMatchPayload)
+        : {};
+    const group: ReviewGroup = {
+      key: groupKey,
+      label: payload.raw_input ?? payload.raw_product_ref ?? item.description ?? "—",
+      items: [item],
+    };
+    index.set(groupKey, group);
+    groups.push(group);
+  }
+
+  return groups;
+}
 
 function ReviewQueuePage() {
   const { user } = useAuth();
@@ -282,9 +326,8 @@ function ReviewQueuePage() {
                   const openCount = group.items.filter((i) => i.status === "OPEN").length;
 
                   return (
-                    <>
+                    <Fragment key={group.key}>
                       <TableRow
-                        key={group.key}
                         className="cursor-pointer text-sm"
                         onClick={() =>
                           setExpanded((prev) => ({ ...prev, [group.key]: !isOpen }))
@@ -337,7 +380,7 @@ function ReviewQueuePage() {
                         </TableCell>
                       </TableRow>
                       {isOpen && group.items.map((item) => renderItemRow(item, true))}
-                    </>
+                    </Fragment>
                   );
                 })}
               </TableBody>
