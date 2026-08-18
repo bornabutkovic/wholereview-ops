@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CheckCircle2, AlertTriangle, Send } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Send, PackageCheck } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import {
@@ -51,6 +52,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+export type RequestDetailKind = "ENQUIRY" | "PO";
+
 export interface RequestDetailContext {
   id: string;
   partnerId: string | null;
@@ -60,6 +63,8 @@ export interface RequestDetailContext {
   titleLabel: string;
   status: string;
   dateReceived: string;
+  /** Document kind — drives the primary action (offer vs. confirm/allocate). */
+  kind?: RequestDetailKind;
 }
 
 interface RequestItem {
@@ -207,6 +212,32 @@ export function RequestDetailSheet({
     });
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const isPo = context?.kind === "PO";
+  const queryClient = useQueryClient();
+
+  const confirmAllocate = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("incoming_requests")
+        .update({ status: "CONFIRMED" })
+        .eq("id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Narudžba potvrđena", {
+        description: "Stavke idu u alokaciju za trenutni ciklus.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["request-items", id] });
+      setConfirmOpen(false);
+    },
+    onError: (e: unknown) =>
+      toast.error("Potvrda nije uspjela", {
+        description: e instanceof Error ? e.message : "Nepoznata greška",
+      }),
+  });
 
   const updateMargin = (it: RequestItem, margin: Margin) => {
     const idx = itemList.indexOf(it);
@@ -569,14 +600,25 @@ export function RequestDetailSheet({
               )}
 
               <div className="flex justify-end border-t pt-4">
-                <Button
-                  disabled={!allPriced}
-                  onClick={() => setPreviewOpen(true)}
-                  className="gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  Send Offer
-                </Button>
+                {isPo ? (
+                  <Button
+                    disabled={!allMatched || confirmAllocate.isPending}
+                    onClick={() => setConfirmOpen(true)}
+                    className="gap-2"
+                  >
+                    <PackageCheck className="h-4 w-4" />
+                    Potvrdi / Alociraj
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={!allPriced}
+                    onClick={() => setPreviewOpen(true)}
+                    className="gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Offer
+                  </Button>
+                )}
               </div>
             </div>
           </>
@@ -594,6 +636,31 @@ export function RequestDetailSheet({
           <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted/50 p-4 text-xs">
             {offerPreview}
           </pre>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Potvrdi narudžbu i pošalji u alokaciju</DialogTitle>
+            <DialogDescription>
+              Narudžbenica {context?.title} ({context?.partnerName}) označit će se kao{" "}
+              CONFIRMED i njezine stavke ulaze u alokaciju trenutnog ciklusa.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              Odustani
+            </Button>
+            <Button
+              className="gap-2"
+              disabled={confirmAllocate.isPending}
+              onClick={() => confirmAllocate.mutate()}
+            >
+              <PackageCheck className="h-4 w-4" />
+              {confirmAllocate.isPending ? "Potvrđujem…" : "Potvrdi / Alociraj"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Sheet>

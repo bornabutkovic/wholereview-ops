@@ -282,6 +282,7 @@ function EnquiriesPage() {
                 contactEmail: active.contactEmail,
                 title: active.subject,
                 titleLabel: "Subject",
+                kind: "ENQUIRY" as const,
                 status: active.status,
                 dateReceived: active.dateReceived,
               }

@@ -306,6 +306,7 @@ function PurchaseOrdersPage() {
                 contactEmail: active.contactEmail,
                 title: active.poNumber ?? "—",
                 titleLabel: "PO Number",
+                kind: "PO" as const,
                 status: active.status,
                 dateReceived: active.dateReceived,
               }
