@@ -287,8 +287,13 @@ export function RequestDetailSheet({
   const offerPreview = useMemo(() => {
     if (!context) return "";
     const lines = itemList.map((it) => {
-      const p = priceState[it.id]?.yourPrice ?? "—";
-      const qty = it.qty_requested != null ? `${it.qty_requested}${it.qty_unit ? ` ${it.qty_unit}` : ""}` : "—";
+      const raw = priceState[it.id]?.yourPrice;
+      const parsed = raw != null ? parseDecimalInput(raw) : NaN;
+      const p = Number.isNaN(parsed) ? "—" : formatMoney(parsed, "");
+      const qty =
+        it.qty_requested != null
+          ? `${formatQty(it.qty_requested)}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
+          : "—";
       return `• ${it.raw_product_ref ?? it.np_sku_id ?? "Item"} — ${qty} @ ${p} EUR`;
     });
     return [
