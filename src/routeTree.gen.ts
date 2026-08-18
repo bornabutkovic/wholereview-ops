@@ -15,7 +15,6 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSuppliersRouteImport } from './routes/_authenticated/suppliers'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
 import { Route as AuthenticatedReviewQueueRouteImport } from './routes/_authenticated/review-queue'
-import { Route as AuthenticatedRequestsRouteImport } from './routes/_authenticated/requests'
 import { Route as AuthenticatedPurchaseOrdersRouteImport } from './routes/_authenticated/purchase-orders'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedPricesRouteImport } from './routes/_authenticated/prices'
@@ -54,11 +53,6 @@ const AuthenticatedReviewQueueRoute =
     path: '/review-queue',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedRequestsRoute = AuthenticatedRequestsRouteImport.update({
-  id: '/requests',
-  path: '/requests',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedPurchaseOrdersRoute =
   AuthenticatedPurchaseOrdersRouteImport.update({
     id: '/purchase-orders',
@@ -106,7 +100,6 @@ export interface FileRoutesByFullPath {
   '/prices': typeof AuthenticatedPricesRoute
   '/products': typeof AuthenticatedProductsRoute
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
-  '/requests': typeof AuthenticatedRequestsRoute
   '/review-queue': typeof AuthenticatedReviewQueueRoute
   '/stock': typeof AuthenticatedStockRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
@@ -120,7 +113,6 @@ export interface FileRoutesByTo {
   '/prices': typeof AuthenticatedPricesRoute
   '/products': typeof AuthenticatedProductsRoute
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
-  '/requests': typeof AuthenticatedRequestsRoute
   '/review-queue': typeof AuthenticatedReviewQueueRoute
   '/stock': typeof AuthenticatedStockRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
@@ -137,7 +129,6 @@ export interface FileRoutesById {
   '/_authenticated/prices': typeof AuthenticatedPricesRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
-  '/_authenticated/requests': typeof AuthenticatedRequestsRoute
   '/_authenticated/review-queue': typeof AuthenticatedReviewQueueRoute
   '/_authenticated/stock': typeof AuthenticatedStockRoute
   '/_authenticated/suppliers': typeof AuthenticatedSuppliersRoute
@@ -155,7 +146,6 @@ export interface FileRouteTypes {
     | '/prices'
     | '/products'
     | '/purchase-orders'
-    | '/requests'
     | '/review-queue'
     | '/stock'
     | '/suppliers'
@@ -169,7 +159,6 @@ export interface FileRouteTypes {
     | '/prices'
     | '/products'
     | '/purchase-orders'
-    | '/requests'
     | '/review-queue'
     | '/stock'
     | '/suppliers'
@@ -185,7 +174,6 @@ export interface FileRouteTypes {
     | '/_authenticated/prices'
     | '/_authenticated/products'
     | '/_authenticated/purchase-orders'
-    | '/_authenticated/requests'
     | '/_authenticated/review-queue'
     | '/_authenticated/stock'
     | '/_authenticated/suppliers'
@@ -239,13 +227,6 @@ declare module '@tanstack/react-router' {
       path: '/review-queue'
       fullPath: '/review-queue'
       preLoaderRoute: typeof AuthenticatedReviewQueueRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/requests': {
-      id: '/_authenticated/requests'
-      path: '/requests'
-      fullPath: '/requests'
-      preLoaderRoute: typeof AuthenticatedRequestsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/purchase-orders': {
@@ -308,7 +289,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPricesRoute: typeof AuthenticatedPricesRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedPurchaseOrdersRoute: typeof AuthenticatedPurchaseOrdersRoute
-  AuthenticatedRequestsRoute: typeof AuthenticatedRequestsRoute
   AuthenticatedReviewQueueRoute: typeof AuthenticatedReviewQueueRoute
   AuthenticatedStockRoute: typeof AuthenticatedStockRoute
   AuthenticatedSuppliersRoute: typeof AuthenticatedSuppliersRoute
@@ -323,7 +303,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPricesRoute: AuthenticatedPricesRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedPurchaseOrdersRoute: AuthenticatedPurchaseOrdersRoute,
-  AuthenticatedRequestsRoute: AuthenticatedRequestsRoute,
   AuthenticatedReviewQueueRoute: AuthenticatedReviewQueueRoute,
   AuthenticatedStockRoute: AuthenticatedStockRoute,
   AuthenticatedSuppliersRoute: AuthenticatedSuppliersRoute,
