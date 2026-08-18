@@ -268,7 +268,7 @@ export function RequestDetailSheet({
   const persistOverride = async (it: RequestItem) => {
     const state = priceState[it.id];
     if (!state || !it.np_sku_id || !partnerId) return;
-    const numeric = Number(state.yourPrice);
+    const numeric = parseDecimalInput(state.yourPrice);
     if (Number.isNaN(numeric)) return;
     await (supabase as unknown as {
       from: (t: string) => {
