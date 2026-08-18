@@ -535,11 +535,7 @@ export function RequestDetailSheet({
 
 
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
-                                {loadingSuggestion
-                                  ? "…"
-                                  : s?.estimated_qty != null
-                                    ? s.estimated_qty
-                                    : "—"}
+                                {loadingSuggestion ? "…" : formatQty(s?.estimated_qty ?? null)}
                               </TableCell>
                             </TableRow>
                           );
