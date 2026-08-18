@@ -380,7 +380,9 @@ function ResolveDialog(props: ResolveDialogProps) {
       }}
     >
       <DialogContent
-        className={isProductMatch ? "sm:max-w-[760px]" : "sm:max-w-[520px]"}
+        className={`flex max-h-[85vh] flex-col overflow-y-auto ${
+          isProductMatch ? "sm:max-w-[760px]" : "sm:max-w-[520px]"
+        }`}
       >
         <DialogHeader>
           <DialogTitle className="text-base">
