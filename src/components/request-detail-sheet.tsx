@@ -180,7 +180,7 @@ export function RequestDetailSheet({
         if (s && next[it.id] === undefined) {
           next[it.id] = {
             margin: 11,
-            yourPrice: s.suggested_price != null ? String(s.suggested_price) : "",
+            yourPrice: toInputString(s.suggested_price),
             suggestedPrice: s.suggested_price ?? null,
             impliedMargin: null,
           };
