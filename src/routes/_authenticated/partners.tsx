@@ -224,7 +224,7 @@ function PartnersPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="buyers" className="flex-1 overflow-auto p-6 pt-4">
+        <TabsContent value="buyers" className="p-6 pt-4">
           <PartnerTable
             partners={buyers.data}
             isLoading={buyers.isLoading}
