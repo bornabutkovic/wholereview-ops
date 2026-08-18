@@ -80,13 +80,6 @@ async function nextPartnerId(): Promise<string> {
 // Edit / create dialog
 // ---------------------------------------------------------------------------
 
-type RoleChoice = "buyer" | "supplier" | "both";
-
-function roleFrom(p: { is_buyer: boolean; is_supplier: boolean }): RoleChoice {
-  if (p.is_buyer && p.is_supplier) return "both";
-  return p.is_supplier ? "supplier" : "buyer";
-}
-
 export function PartnerEditDialog(props: {
   open: boolean;
   partner: PartnerEditable | null; // null => create mode
@@ -100,7 +93,8 @@ export function PartnerEditDialog(props: {
   const [country, setCountry] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [role, setRole] = useState<RoleChoice>("buyer");
+  const [isBuyer, setIsBuyer] = useState(true);
+  const [isSupplier, setIsSupplier] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -108,13 +102,11 @@ export function PartnerEditDialog(props: {
     setCountry(partner?.country ?? "");
     setEmail(partner?.contact_email ?? "");
     setCode(partner?.code ?? "");
-    setRole(partner ? roleFrom(partner) : "buyer");
+    setIsBuyer(partner ? partner.is_buyer : true);
+    setIsSupplier(partner ? partner.is_supplier : false);
   }, [open, partner]);
 
-  const roleFlags = {
-    is_buyer: role === "buyer" || role === "both",
-    is_supplier: role === "supplier" || role === "both",
-  };
+  const roleFlags = { is_buyer: isBuyer, is_supplier: isSupplier };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -474,5 +466,3 @@ export function PartnerMergeDialog(props: {
     </Dialog>
   );
 }
-
-export { Checkbox };
