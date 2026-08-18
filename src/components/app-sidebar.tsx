@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Requests", url: "/requests", icon: Inbox },
+  { title: "Inbox", url: "/inbox", icon: Inbox },
   { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
   { title: "Enquiries", url: "/enquiries", icon: MessageSquare },
   { title: "Review Queue", url: "/review-queue", icon: ListChecks },

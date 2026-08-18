@@ -91,7 +91,7 @@ export interface AssignPartnerArgs {
   partnerName: string;
   fromAddress: string | null;
   emailLogId: string | null;
-  reviewItemId: string;
+  reviewItemId: string | null;
   userId: string | null;
 }
 
@@ -101,8 +101,13 @@ export interface AssignPartnerResult {
 }
 
 export function useAssignPartner() {
-  return useMutation({
-    mutationFn: async (args: AssignPartnerArgs): Promise<AssignPartnerResult> => {
+  return useMutation({ mutationFn: assignPartner });
+}
+
+export async function assignPartner(
+  args: AssignPartnerArgs,
+): Promise<AssignPartnerResult> {
+  {
       const trimmedEmail = args.fromAddress?.trim() || null;
       if (trimmedEmail) {
         const { error } = await supabase
@@ -252,16 +257,17 @@ export function useAssignPartner() {
 
 
       // Step 6: resolve the current PARTNER_UNKNOWN review item
-      await resolveReviewItem({
-        id: args.reviewItemId,
-        status: "RESOLVED",
-        note: `Linked to partner: ${args.partnerName}`,
-        userId: args.userId,
-      });
+      if (args.reviewItemId) {
+        await resolveReviewItem({
+          id: args.reviewItemId,
+          status: "RESOLVED",
+          note: `Linked to partner: ${args.partnerName}`,
+          userId: args.userId,
+        });
+      }
 
       return { matched, sentToReview };
-    },
-  });
+  }
 }
 
 export interface ConfirmMappingArgs {
