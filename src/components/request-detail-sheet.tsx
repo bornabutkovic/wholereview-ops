@@ -203,7 +203,7 @@ export function RequestDetailSheet({
     itemList.length > 0 &&
     itemList.every((it) => {
       const p = priceState[it.id]?.yourPrice;
-      return p != null && p !== "" && !Number.isNaN(Number(p));
+      return p != null && p !== "" && !Number.isNaN(parseDecimalInput(p));
     });
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -219,7 +219,7 @@ export function RequestDetailSheet({
         margin,
         suggestedPrice: recalculated ?? prev[it.id]?.suggestedPrice ?? null,
         yourPrice:
-          recalculated != null ? String(recalculated) : (prev[it.id]?.yourPrice ?? ""),
+          recalculated != null ? toInputString(recalculated) : (prev[it.id]?.yourPrice ?? ""),
         impliedMargin: null,
       },
     }));
@@ -229,29 +229,39 @@ export function RequestDetailSheet({
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
     const max = s?.max_historical_price ?? null;
-    const numeric = parseFloat(value);
+    const numeric = parseDecimalInput(value);
 
     setPriceState((prev) => {
-      const impliedMargin: Margin = (() => {
-        if (max == null || max === 0 || isNaN(numeric)) return prev[it.id]?.margin ?? 11;
-        const pct = Math.round((numeric / max - 1) * 100);
+      const previous = prev[it.id];
+      let margin: Margin = previous?.margin ?? 11;
+      let impliedMargin: number | null = null;
+
+      if (max != null && max !== 0 && !Number.isNaN(numeric)) {
+        // Always recalculate the percentage from the manually entered price.
+        const pct = Number((((numeric / max) - 1) * 100).toFixed(1));
         const closest = MARGIN_OPTIONS.reduce((a, b) =>
           Math.abs(b - pct) < Math.abs(a - pct) ? b : a
         );
-        return Math.abs(closest - pct) <= 1 ? closest : (prev[it.id]?.margin ?? 11);
-      })();
+        if (Math.abs(closest - pct) <= 1) {
+          margin = closest;
+          impliedMargin = null;
+        } else {
+          impliedMargin = pct;
+        }
+      }
 
       return {
         ...prev,
         [it.id]: {
-          margin: impliedMargin,
-          suggestedPrice: prev[it.id]?.suggestedPrice ?? null,
+          margin,
+          suggestedPrice: previous?.suggestedPrice ?? null,
           yourPrice: value,
-          impliedMargin: null,
+          impliedMargin,
         },
       };
     });
   };
+
 
 
 
