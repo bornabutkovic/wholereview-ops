@@ -211,6 +211,32 @@ export function RequestDetailSheet({
     });
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const isPo = context?.kind === "PO";
+  const queryClient = useQueryClient();
+
+  const confirmAllocate = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("incoming_requests")
+        .update({ status: "CONFIRMED" })
+        .eq("id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Narudžba potvrđena", {
+        description: "Stavke idu u alokaciju za trenutni ciklus.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["request-items", id] });
+      setConfirmOpen(false);
+    },
+    onError: (e: unknown) =>
+      toast.error("Potvrda nije uspjela", {
+        description: e instanceof Error ? e.message : "Nepoznata greška",
+      }),
+  });
 
   const updateMargin = (it: RequestItem, margin: Margin) => {
     const idx = itemList.indexOf(it);
