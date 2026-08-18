@@ -192,7 +192,7 @@ function PartnersPage() {
   const suppliers = usePartners("supplier");
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-full flex-col">
       <header className="border-b px-6 py-4">
         <h1 className="text-lg font-semibold tracking-tight">Partners</h1>
         <div className="flex items-start justify-between gap-3">
@@ -224,7 +224,7 @@ function PartnersPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="buyers" className="flex-1 overflow-auto p-6 pt-4">
+        <TabsContent value="buyers" className="p-6 pt-4">
           <PartnerTable
             partners={buyers.data}
             isLoading={buyers.isLoading}
@@ -235,7 +235,7 @@ function PartnersPage() {
           />
         </TabsContent>
 
-        <TabsContent value="suppliers" className="flex-1 overflow-auto p-6 pt-4">
+        <TabsContent value="suppliers" className="p-6 pt-4">
           <PartnerTable
             partners={suppliers.data}
             isLoading={suppliers.isLoading}
