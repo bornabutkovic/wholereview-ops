@@ -20,6 +20,7 @@ import { Route as AuthenticatedPurchaseOrdersRouteImport } from './routes/_authe
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedPricesRouteImport } from './routes/_authenticated/prices'
 import { Route as AuthenticatedPartnersRouteImport } from './routes/_authenticated/partners'
+import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedEnquiriesRouteImport } from './routes/_authenticated/enquiries'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 
@@ -79,6 +80,11 @@ const AuthenticatedPartnersRoute = AuthenticatedPartnersRouteImport.update({
   path: '/partners',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedEnquiriesRoute = AuthenticatedEnquiriesRouteImport.update({
   id: '/enquiries',
   path: '/enquiries',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/enquiries': typeof AuthenticatedEnquiriesRoute
+  '/inbox': typeof AuthenticatedInboxRoute
   '/partners': typeof AuthenticatedPartnersRoute
   '/prices': typeof AuthenticatedPricesRoute
   '/products': typeof AuthenticatedProductsRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/enquiries': typeof AuthenticatedEnquiriesRoute
+  '/inbox': typeof AuthenticatedInboxRoute
   '/partners': typeof AuthenticatedPartnersRoute
   '/prices': typeof AuthenticatedPricesRoute
   '/products': typeof AuthenticatedProductsRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/enquiries': typeof AuthenticatedEnquiriesRoute
+  '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/partners': typeof AuthenticatedPartnersRoute
   '/_authenticated/prices': typeof AuthenticatedPricesRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/analytics'
     | '/enquiries'
+    | '/inbox'
     | '/partners'
     | '/prices'
     | '/products'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/analytics'
     | '/enquiries'
+    | '/inbox'
     | '/partners'
     | '/prices'
     | '/products'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/analytics'
     | '/_authenticated/enquiries'
+    | '/_authenticated/inbox'
     | '/_authenticated/partners'
     | '/_authenticated/prices'
     | '/_authenticated/products'
@@ -264,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPartnersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/inbox': {
+      id: '/_authenticated/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof AuthenticatedInboxRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/enquiries': {
       id: '/_authenticated/enquiries'
       path: '/enquiries'
@@ -284,6 +303,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedEnquiriesRoute: typeof AuthenticatedEnquiriesRoute
+  AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
   AuthenticatedPartnersRoute: typeof AuthenticatedPartnersRoute
   AuthenticatedPricesRoute: typeof AuthenticatedPricesRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
@@ -298,6 +318,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedEnquiriesRoute: AuthenticatedEnquiriesRoute,
+  AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedPartnersRoute: AuthenticatedPartnersRoute,
   AuthenticatedPricesRoute: AuthenticatedPricesRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,

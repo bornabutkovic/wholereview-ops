@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { AlertCircle, Clock, RefreshCw, UserQuestionMark, X } from "lucide-react";
+import { AlertCircle, Clock, RefreshCw, HelpCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -372,7 +372,7 @@ const REASON_META: Record<
   PARTNER_UNKNOWN: {
     label: "Nepoznat pošiljatelj",
     className: "border-amber-200 bg-amber-50 text-amber-700",
-    icon: UserQuestionMark,
+    icon: HelpCircle,
   },
   STUCK: {
     label: "Zaglavljeno",

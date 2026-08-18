@@ -99,7 +99,7 @@ function DashboardPage() {
           <KpiCard
             label="Open requests"
             icon={Inbox}
-            to="/requests"
+            to="/inbox"
             queryKey={["kpi", "open-requests"]}
             queryFn={countOpenRequests}
             accent="text-blue-600"
@@ -151,7 +151,7 @@ function DashboardPage() {
 interface KpiCardProps {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  to: "/requests" | "/review-queue" | "/stock" | "/partners";
+  to: "/inbox" | "/review-queue" | "/stock" | "/partners";
   queryKey: readonly unknown[];
   queryFn: () => Promise<number>;
   accent: string;
