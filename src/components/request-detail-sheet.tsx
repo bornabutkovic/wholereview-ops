@@ -51,6 +51,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+export type RequestDetailKind = "ENQUIRY" | "PO";
+
 export interface RequestDetailContext {
   id: string;
   partnerId: string | null;
@@ -60,6 +62,8 @@ export interface RequestDetailContext {
   titleLabel: string;
   status: string;
   dateReceived: string;
+  /** Document kind — drives the primary action (offer vs. confirm/allocate). */
+  kind?: RequestDetailKind;
 }
 
 interface RequestItem {
