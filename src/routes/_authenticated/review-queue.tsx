@@ -217,60 +217,129 @@ function ReviewQueuePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((item) => (
-                  <TableRow key={item.id} className="text-sm">
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`font-medium ${CATEGORY_STYLES[item.category]}`}
-                      >
-                        {item.category.replace(/_/g, " ").toLowerCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-0">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="truncate text-[13px] text-foreground">
-                            {item.description ?? (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        {item.description && (
-                          <TooltipContent className="max-w-md">
-                            <p className="text-xs">{item.description}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`font-medium ${STATUS_STYLES[item.status]}`}
-                      >
-                        {item.status.toLowerCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.status === "OPEN" ? (
-                        <Button size="sm" variant="outline" onClick={() => setActive(item)}>
-                          Resolve
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
+                {groups.map((group) => {
+                  const isGrouped = group.items.length > 1;
+                  const isOpen = expanded[group.key] ?? false;
+
+                  const renderItemRow = (item: ReviewItem, nested: boolean) => (
+                    <TableRow key={item.id} className={cn("text-sm", nested && "bg-muted/20")}>
+                      <TableCell className={nested ? "pl-10" : undefined}>
+                        <Badge
                           variant="outline"
-                          onClick={() => setReopenItem(item)}
+                          className={`font-medium ${CATEGORY_STYLES[item.category]}`}
                         >
-                          Reopen
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {item.category.replace(/_/g, " ").toLowerCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="truncate text-[13px] text-foreground">
+                              {item.description ?? (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          {item.description && (
+                            <TooltipContent className="max-w-md">
+                              <p className="text-xs">{item.description}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`font-medium ${STATUS_STYLES[item.status]}`}
+                        >
+                          {item.status.toLowerCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.status === "OPEN" ? (
+                          <Button size="sm" variant="outline" onClick={() => setActive(item)}>
+                            Resolve
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setReopenItem(item)}
+                          >
+                            Reopen
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+
+                  if (!isGrouped) return renderItemRow(group.items[0], false);
+
+                  const first = group.items[0];
+                  const openCount = group.items.filter((i) => i.status === "OPEN").length;
+
+                  return (
+                    <>
+                      <TableRow
+                        key={group.key}
+                        className="cursor-pointer text-sm"
+                        onClick={() =>
+                          setExpanded((prev) => ({ ...prev, [group.key]: !isOpen }))
+                        }
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {isOpen ? (
+                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            )}
+                            <Badge
+                              variant="outline"
+                              className={`font-medium ${CATEGORY_STYLES[first.category]}`}
+                            >
+                              {first.category.replace(/_/g, " ").toLowerCase()}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-[13px] font-medium text-foreground">
+                              {group.label}
+                            </span>
+                            <Badge variant="secondary" className="shrink-0 text-[10px]">
+                              ×{group.items.length} pojava
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {openCount > 0 ? `${openCount} open` : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(first.created_at), { addSuffix: true })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {first.status === "OPEN" ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActive(first);
+                              }}
+                            >
+                              Resolve
+                            </Button>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && group.items.map((item) => renderItemRow(item, true))}
+                    </>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
