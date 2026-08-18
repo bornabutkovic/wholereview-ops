@@ -134,6 +134,8 @@ function ReviewQueuePage() {
     return items.filter((i) => (i.description ?? "").toLowerCase().includes(s));
   }, [query.data, search]);
 
+  const groups = useMemo(() => groupByRawInput(filtered), [filtered]);
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex h-full flex-col">
