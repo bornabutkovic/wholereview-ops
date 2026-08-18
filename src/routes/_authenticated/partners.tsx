@@ -2,7 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Search, Eye, Mail, FileText, MapPin, Hash, Plus, Loader2 } from "lucide-react";
+import {
+  Search,
+  Eye,
+  Mail,
+  FileText,
+  MapPin,
+  Hash,
+  Plus,
+  Loader2,
+  Pencil,
+  Trash2,
+  Merge,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -36,6 +48,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  PartnerEditDialog,
+  PartnerDeleteDialog,
+  PartnerMergeDialog,
+  type PartnerEditable,
+} from "@/components/partner-admin";
 
 
 export const Route = createFileRoute("/_authenticated/partners")({
@@ -157,6 +175,18 @@ function usePartnerContacts(partnerId: string | null) {
 
 function PartnersPage() {
   const [selected, setSelected] = useState<PartnerRow | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<PartnerRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PartnerRow | null>(null);
+
+  const openCreate = () => {
+    setEditTarget(null);
+    setEditOpen(true);
+  };
+  const openEdit = (p: PartnerRow) => {
+    setEditTarget(p);
+    setEditOpen(true);
+  };
 
   const buyers = usePartners("buyer");
   const suppliers = usePartners("supplier");
@@ -165,9 +195,15 @@ function PartnersPage() {
     <div className="flex h-full flex-col">
       <header className="border-b px-6 py-4">
         <h1 className="text-lg font-semibold tracking-tight">Partners</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Buyers and suppliers directory
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Buyers and suppliers directory
+          </p>
+          <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={openCreate}>
+            <Plus className="h-3.5 w-3.5" />
+            Add partner
+          </Button>
+        </div>
       </header>
 
       <Tabs defaultValue="buyers" className="flex flex-1 flex-col">
@@ -194,6 +230,8 @@ function PartnersPage() {
             isLoading={buyers.isLoading}
             error={buyers.error as Error | null}
             onView={setSelected}
+            onEdit={openEdit}
+            onDelete={setDeleteTarget}
           />
         </TabsContent>
 
@@ -203,6 +241,8 @@ function PartnersPage() {
             isLoading={suppliers.isLoading}
             error={suppliers.error as Error | null}
             onView={setSelected}
+            onEdit={openEdit}
+            onDelete={setDeleteTarget}
           />
         </TabsContent>
       </Tabs>
@@ -210,6 +250,20 @@ function PartnersPage() {
       <PartnerDetailSheet
         partner={selected}
         onClose={() => setSelected(null)}
+      />
+
+      <PartnerEditDialog
+        open={editOpen}
+        partner={editTarget as PartnerEditable | null}
+        onClose={() => {
+          setEditOpen(false);
+          setEditTarget(null);
+        }}
+      />
+
+      <PartnerDeleteDialog
+        partner={deleteTarget as PartnerEditable | null}
+        onClose={() => setDeleteTarget(null)}
       />
     </div>
   );
@@ -224,11 +278,24 @@ interface PartnerTableProps {
   isLoading: boolean;
   error: Error | null;
   onView: (p: PartnerRow) => void;
+  onEdit: (p: PartnerRow) => void;
+  onDelete: (p: PartnerRow) => void;
 }
 
 function PartnerTable(props: PartnerTableProps) {
-  const { partners, isLoading, error, onView } = props;
+  const { partners, isLoading, error, onView, onEdit, onDelete } = props;
   const [search, setSearch] = useState("");
+  const [checked, setChecked] = useState<string[]>([]);
+  const [mergeOpen, setMergeOpen] = useState(false);
+
+  const toggle = (id: string) =>
+    setChecked((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const selectedPartners = (partners ?? []).filter((p) =>
+    checked.includes(p.partner_id),
+  );
 
   const filtered = useMemo(() => {
     if (!partners) return [];
@@ -241,7 +308,8 @@ function PartnerTable(props: PartnerTableProps) {
 
   return (
     <div className="space-y-3">
-      <div className="relative max-w-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="relative max-w-sm flex-1">
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
@@ -251,44 +319,63 @@ function PartnerTable(props: PartnerTableProps) {
           }}
           placeholder="Search by name..."
           className="pl-8 h-9 text-sm"
-        />
+          />
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 gap-1.5 text-xs"
+          disabled={checked.length < 2}
+          onClick={() => setMergeOpen(true)}
+        >
+          <Merge className="h-3.5 w-3.5" />
+          Merge{checked.length >= 2 ? ` (${checked.length})` : ""}
+        </Button>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]" />
               <TableHead className="w-[120px]">Code</TableHead>
               <TableHead>Name</TableHead>
               <TableHead className="w-[140px]">Country</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead className="w-[100px] text-right">Action</TableHead>
+              <TableHead className="w-[200px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={6}>
                     <Skeleton className="h-5 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-destructive">
+                <TableCell colSpan={6} className="text-center text-sm text-destructive">
                   {error.message}
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                   No partners found
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((p) => (
                 <TableRow key={p.partner_id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={checked.includes(p.partner_id)}
+                      onCheckedChange={() => toggle(p.partner_id)}
+                      aria-label={`Select ${p.name}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{p.partner_id}</TableCell>
                   <TableCell className="font-medium">{p.name ?? "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -298,15 +385,35 @@ function PartnerTable(props: PartnerTableProps) {
                     {p.contact_email ?? "—"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 gap-1.5 text-xs"
-                      onClick={() => onView(p)}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      View
-                    </Button>
+                    <div className="flex justify-end gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 text-xs"
+                        onClick={() => onView(p)}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 text-xs"
+                        onClick={() => onEdit(p)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        title="Delete"
+                        onClick={() => onDelete(p)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -314,6 +421,15 @@ function PartnerTable(props: PartnerTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      <PartnerMergeDialog
+        open={mergeOpen}
+        partners={selectedPartners as PartnerEditable[]}
+        onClose={(merged) => {
+          setMergeOpen(false);
+          if (merged) setChecked([]);
+        }}
+      />
     </div>
   );
 }
