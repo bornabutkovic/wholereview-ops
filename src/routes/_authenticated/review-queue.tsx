@@ -1025,7 +1025,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
                 <p className="text-[11px] text-muted-foreground">Tražena količina</p>
                 {context.data?.qtyRequested !== null && context.data?.qtyRequested !== undefined ? (
                   <p className="text-sm text-foreground">
-                    {`${context.data.qtyRequested}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`}
+                    {`${formatQty(context.data.qtyRequested)}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`}
                   </p>
                 ) : (
                   <Badge
