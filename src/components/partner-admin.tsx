@@ -213,26 +213,41 @@ export function PartnerEditDialog(props: {
 
           <div className="space-y-2">
             <Label className="text-xs">Tip partnera</Label>
-            <RadioGroup
-              value={role}
-              onValueChange={(v) => setRole(v as RoleChoice)}
-              className="grid gap-2"
-            >
-              {(
-                [
-                  ["buyer", "Buyer"],
-                  ["supplier", "Supplier"],
-                  ["both", "Both (buyer i supplier)"],
-                ] as const
-              ).map(([value, label]) => (
-                <div key={value} className="flex items-center gap-2">
-                  <RadioGroupItem value={value} id={`role-${value}`} />
-                  <Label htmlFor={`role-${value}`} className="text-sm font-normal">
-                    {label}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="role-buyer"
+                  checked={isBuyer}
+                  onCheckedChange={(v) => setIsBuyer(v === true)}
+                />
+                <Label htmlFor="role-buyer" className="text-sm font-normal">
+                  Buyer
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="role-supplier"
+                  checked={isSupplier}
+                  onCheckedChange={(v) => setIsSupplier(v === true)}
+                />
+                <Label htmlFor="role-supplier" className="text-sm font-normal">
+                  Supplier
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="role-both"
+                  checked={isBuyer && isSupplier}
+                  onCheckedChange={(v) => {
+                    setIsBuyer(v === true);
+                    setIsSupplier(v === true);
+                  }}
+                />
+                <Label htmlFor="role-both" className="text-sm font-normal">
+                  Both
+                </Label>
+              </div>
+            </div>
           </div>
         </div>
 
