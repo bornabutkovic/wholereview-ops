@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Inbox, ListChecks, Boxes, Users, ArrowUpRight } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
+import { formatQty } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -180,7 +181,7 @@ function KpiCard(props: KpiCardProps) {
     </TooltipProvider>
   ) : (
     <p className="mt-1 text-2xl font-semibold tabular-nums">
-      {(data ?? 0).toLocaleString()}
+      {formatQty(data ?? 0)}
     </p>
   );
 
