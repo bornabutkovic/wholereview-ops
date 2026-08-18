@@ -410,7 +410,7 @@ export function RequestDetailSheet({
                               </TableCell>
                               <TableCell className="text-[13px] tabular-nums">
                                 {it.qty_requested != null ? (
-                                  `${it.qty_requested}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
+                                  `${formatQty(it.qty_requested)}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
                                 ) : (
                                   <Badge
                                     variant="outline"
@@ -424,16 +424,14 @@ export function RequestDetailSheet({
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
                                 {loadingSuggestion
                                   ? "…"
-                                  : s?.last_sold_price != null
-                                    ? `${s.last_sold_price} EUR`
-                                    : "—"}
+                                  : formatMoney(s?.last_sold_price ?? null)}
                               </TableCell>
                               <TableCell>
                                 {loadingSuggestion ? (
                                   <span className="text-xs text-muted-foreground">…</span>
                                 ) : s?.suggested_price != null ? (
-                                  <Badge className="bg-blue-600 font-bold text-white hover:bg-blue-700">
-                                    {s.suggested_price} EUR
+                                  <Badge className="bg-blue-600 font-bold text-white tabular-nums hover:bg-blue-700">
+                                    {formatMoney(s.suggested_price)}
                                   </Badge>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
