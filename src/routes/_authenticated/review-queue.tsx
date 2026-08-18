@@ -6,6 +6,7 @@ import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, Chev
 import { toast } from "sonner";
 
 import { listReviewItems, resolveReviewItem } from "@/lib/review-queue";
+import { formatQty } from "@/lib/format";
 import type { NpSkuDetails, Partner, PartnerUnknownPayload, ProductMatchPayload, ReviewCategory, ReviewItem, ReviewStatus } from "@/lib/supabase";
 import {
   useAssignPartner,
