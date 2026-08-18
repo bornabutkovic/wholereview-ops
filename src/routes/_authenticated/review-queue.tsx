@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, ChevronsUpDown, ChevronRight, ChevronDown } from "lucide-react";
+import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, ChevronsUpDown, ChevronRight, ChevronDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import { listReviewItems, resolveReviewItem } from "@/lib/review-queue";
@@ -1023,11 +1023,19 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Tražena količina</p>
-                <p className="text-sm text-foreground">
-                  {context.data?.qtyRequested !== null && context.data?.qtyRequested !== undefined
-                    ? `${context.data.qtyRequested}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`
-                    : "—"}
-                </p>
+                {context.data?.qtyRequested !== null && context.data?.qtyRequested !== undefined ? (
+                  <p className="text-sm text-foreground">
+                    {`${context.data.qtyRequested}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`}
+                  </p>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="mt-1 border-rose-200 bg-rose-50 text-[11px] text-rose-700"
+                  >
+                    <AlertTriangle className="mr-1 h-3 w-3" />
+                    Količina nedostaje
+                  </Badge>
+                )}
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Dokument</p>
