@@ -387,9 +387,17 @@ export function RequestDetailSheet({
                                 )}
                               </TableCell>
                               <TableCell className="text-[13px] tabular-nums">
-                                {it.qty_requested != null
-                                  ? `${it.qty_requested}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
-                                  : "—"}
+                                {it.qty_requested != null ? (
+                                  `${it.qty_requested}${it.qty_unit ? ` ${it.qty_unit}` : ""}`
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-rose-200 bg-rose-50 text-[11px] text-rose-700"
+                                  >
+                                    <AlertTriangle className="mr-1 h-3 w-3" />
+                                    Količina nedostaje
+                                  </Badge>
+                                )}
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground tabular-nums">
                                 {loadingSuggestion
