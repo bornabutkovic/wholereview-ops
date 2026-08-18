@@ -257,16 +257,17 @@ export async function assignPartner(
 
 
       // Step 6: resolve the current PARTNER_UNKNOWN review item
-      await resolveReviewItem({
-        id: args.reviewItemId,
-        status: "RESOLVED",
-        note: `Linked to partner: ${args.partnerName}`,
-        userId: args.userId,
-      });
+      if (args.reviewItemId) {
+        await resolveReviewItem({
+          id: args.reviewItemId,
+          status: "RESOLVED",
+          note: `Linked to partner: ${args.partnerName}`,
+          userId: args.userId,
+        });
+      }
 
       return { matched, sentToReview };
-    },
-  });
+  }
 }
 
 export interface ConfirmMappingArgs {
