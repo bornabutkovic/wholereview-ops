@@ -874,6 +874,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
 
   const skus = useNpSkuList();
   const confirm = useConfirmMapping();
+  const context = useProductMatchContext({ itemId, partnerId });
   const reject = useRejectMapping();
 
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(suggestedSkuId);
@@ -997,6 +998,62 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
             <p className="text-sm text-muted-foreground">SKU {suggestedSkuId} not found</p>
           )}
         </div>
+      </div>
+
+      <div className="rounded-md border bg-muted/10 p-3">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Kontekst
+        </p>
+        {context.isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-1/3" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Kupac</p>
+                <p className="text-sm text-foreground">
+                  {context.data?.buyerName ??
+                    context.data?.buyerId ??
+                    partnerId ?? <span className="text-muted-foreground">—</span>}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Tražena količina</p>
+                <p className="text-sm text-foreground">
+                  {context.data?.qtyRequested !== null && context.data?.qtyRequested !== undefined
+                    ? `${context.data.qtyRequested}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Dokument</p>
+                <p className="text-sm text-foreground">
+                  {context.data?.docType ?? "—"}
+                  {context.data?.poNumber ? ` · ${context.data.poNumber}` : ""}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-muted-foreground">
+                Izvorni tekst maila
+                {context.data?.emailSubject ? ` · ${context.data.emailSubject}` : ""}
+              </p>
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md border bg-background p-2 text-[11px] leading-relaxed text-foreground">
+                {context.data?.sourceText ?? "Nema izvornog teksta"}
+              </pre>
+              {context.data?.sourceLabel && (
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {context.data.sourceLabel}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-1.5">
