@@ -469,9 +469,13 @@ export function RequestDetailSheet({
                                   {ps?.impliedMargin != null && (
                                     <Badge
                                       variant="outline"
-                                      className="border-amber-200 bg-amber-50 text-[10px] text-amber-800"
+                                      className={`text-[10px] tabular-nums ${
+                                        ps.impliedMargin < 0
+                                          ? "border-rose-200 bg-rose-50 text-rose-700"
+                                          : "border-amber-200 bg-amber-50 text-amber-800"
+                                      }`}
                                     >
-                                      Custom: {ps.impliedMargin}%
+                                      Custom: {formatPercent(ps.impliedMargin)}
                                     </Badge>
                                   )}
                                 </div>
@@ -482,7 +486,7 @@ export function RequestDetailSheet({
                                     ps?.impliedMargin != null && ps.impliedMargin < 0;
                                   const input = (
                                     <Input
-                                      type="number"
+                                      type="text"
                                       inputMode="decimal"
                                       className={`h-8 w-[100px] text-xs tabular-nums ${
                                         belowCost
