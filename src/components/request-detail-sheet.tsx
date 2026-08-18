@@ -600,14 +600,25 @@ export function RequestDetailSheet({
               )}
 
               <div className="flex justify-end border-t pt-4">
-                <Button
-                  disabled={!allPriced}
-                  onClick={() => setPreviewOpen(true)}
-                  className="gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  Send Offer
-                </Button>
+                {isPo ? (
+                  <Button
+                    disabled={!allMatched || confirmAllocate.isPending}
+                    onClick={() => setConfirmOpen(true)}
+                    className="gap-2"
+                  >
+                    <PackageCheck className="h-4 w-4" />
+                    Potvrdi / Alociraj
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={!allPriced}
+                    onClick={() => setPreviewOpen(true)}
+                    className="gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Offer
+                  </Button>
+                )}
               </div>
             </div>
           </>
@@ -625,6 +636,31 @@ export function RequestDetailSheet({
           <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted/50 p-4 text-xs">
             {offerPreview}
           </pre>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Potvrdi narudžbu i pošalji u alokaciju</DialogTitle>
+            <DialogDescription>
+              Narudžbenica {context?.title} ({context?.partnerName}) označit će se kao{" "}
+              CONFIRMED i njezine stavke ulaze u alokaciju trenutnog ciklusa.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              Odustani
+            </Button>
+            <Button
+              className="gap-2"
+              disabled={confirmAllocate.isPending}
+              onClick={() => confirmAllocate.mutate()}
+            >
+              <PackageCheck className="h-4 w-4" />
+              {confirmAllocate.isPending ? "Potvrđujem…" : "Potvrdi / Alociraj"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Sheet>
