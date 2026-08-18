@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Search, AlertCircle, Inbox, CheckCircle2, XCircle, Check, ChevronsUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { listReviewItems, resolveReviewItem } from "@/lib/review-queue";
@@ -14,6 +14,7 @@ import {
   usePartners,
   useRejectMapping,
   useReopenReviewItem,
+  useProductMatchContext,
 } from "@/lib/product-mapping";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -109,6 +110,50 @@ const STATUS_STYLES: Record<ReviewStatus, string> = {
   DISMISSED: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
+type ReviewGroup = { key: string; label: string; items: ReviewItem[] };
+
+function rawInputKey(item: ReviewItem): string | null {
+  const payload =
+    item.payload && typeof item.payload === "object"
+      ? (item.payload as ProductMatchPayload)
+      : {};
+  const raw = payload.raw_input ?? payload.raw_product_ref ?? null;
+  const value = (raw ?? "").trim();
+  return value ? value.toLowerCase() : null;
+}
+
+function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
+  const groups: ReviewGroup[] = [];
+  const index = new Map<string, ReviewGroup>();
+
+  for (const item of items) {
+    const key = rawInputKey(item);
+    if (!key) {
+      groups.push({ key: item.id, label: item.description ?? "—", items: [item] });
+      continue;
+    }
+    const groupKey = `raw:${item.category}:${key}`;
+    const existing = index.get(groupKey);
+    if (existing) {
+      existing.items.push(item);
+      continue;
+    }
+    const payload =
+      item.payload && typeof item.payload === "object"
+        ? (item.payload as ProductMatchPayload)
+        : {};
+    const group: ReviewGroup = {
+      key: groupKey,
+      label: payload.raw_input ?? payload.raw_product_ref ?? item.description ?? "—",
+      items: [item],
+    };
+    index.set(groupKey, group);
+    groups.push(group);
+  }
+
+  return groups;
+}
+
 function ReviewQueuePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -117,6 +162,7 @@ function ReviewQueuePage() {
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<ReviewItem | null>(null);
   const [reopenItem, setReopenItem] = useState<ReviewItem | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const query = useQuery({
     queryKey: ["review-queue", status, category],
@@ -131,6 +177,8 @@ function ReviewQueuePage() {
     const s = search.toLowerCase();
     return items.filter((i) => (i.description ?? "").toLowerCase().includes(s));
   }, [query.data, search]);
+
+  const groups = useMemo(() => groupByRawInput(filtered), [filtered]);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -213,60 +261,128 @@ function ReviewQueuePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((item) => (
-                  <TableRow key={item.id} className="text-sm">
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`font-medium ${CATEGORY_STYLES[item.category]}`}
-                      >
-                        {item.category.replace(/_/g, " ").toLowerCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-0">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="truncate text-[13px] text-foreground">
-                            {item.description ?? (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        {item.description && (
-                          <TooltipContent className="max-w-md">
-                            <p className="text-xs">{item.description}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`font-medium ${STATUS_STYLES[item.status]}`}
-                      >
-                        {item.status.toLowerCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.status === "OPEN" ? (
-                        <Button size="sm" variant="outline" onClick={() => setActive(item)}>
-                          Resolve
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
+                {groups.map((group) => {
+                  const isGrouped = group.items.length > 1;
+                  const isOpen = expanded[group.key] ?? false;
+
+                  const renderItemRow = (item: ReviewItem, nested: boolean) => (
+                    <TableRow key={item.id} className={cn("text-sm", nested && "bg-muted/20")}>
+                      <TableCell className={nested ? "pl-10" : undefined}>
+                        <Badge
                           variant="outline"
-                          onClick={() => setReopenItem(item)}
+                          className={`font-medium ${CATEGORY_STYLES[item.category]}`}
                         >
-                          Reopen
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {item.category.replace(/_/g, " ").toLowerCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="truncate text-[13px] text-foreground">
+                              {item.description ?? (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          {item.description && (
+                            <TooltipContent className="max-w-md">
+                              <p className="text-xs">{item.description}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`font-medium ${STATUS_STYLES[item.status]}`}
+                        >
+                          {item.status.toLowerCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.status === "OPEN" ? (
+                          <Button size="sm" variant="outline" onClick={() => setActive(item)}>
+                            Resolve
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setReopenItem(item)}
+                          >
+                            Reopen
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+
+                  if (!isGrouped) return renderItemRow(group.items[0], false);
+
+                  const first = group.items[0];
+                  const openCount = group.items.filter((i) => i.status === "OPEN").length;
+
+                  return (
+                    <Fragment key={group.key}>
+                      <TableRow
+                        className="cursor-pointer text-sm"
+                        onClick={() =>
+                          setExpanded((prev) => ({ ...prev, [group.key]: !isOpen }))
+                        }
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {isOpen ? (
+                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            )}
+                            <Badge
+                              variant="outline"
+                              className={`font-medium ${CATEGORY_STYLES[first.category]}`}
+                            >
+                              {first.category.replace(/_/g, " ").toLowerCase()}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-[13px] font-medium text-foreground">
+                              {group.label}
+                            </span>
+                            <Badge variant="secondary" className="shrink-0 text-[10px]">
+                              ×{group.items.length} pojava
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {openCount > 0 ? `${openCount} open` : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(first.created_at), { addSuffix: true })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {first.status === "OPEN" ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActive(first);
+                              }}
+                            >
+                              Resolve
+                            </Button>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && group.items.map((item) => renderItemRow(item, true))}
+                    </Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -758,6 +874,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
 
   const skus = useNpSkuList();
   const confirm = useConfirmMapping();
+  const context = useProductMatchContext({ itemId, partnerId });
   const reject = useRejectMapping();
 
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(suggestedSkuId);
@@ -881,6 +998,62 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
             <p className="text-sm text-muted-foreground">SKU {suggestedSkuId} not found</p>
           )}
         </div>
+      </div>
+
+      <div className="rounded-md border bg-muted/10 p-3">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Kontekst
+        </p>
+        {context.isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-1/3" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Kupac</p>
+                <p className="text-sm text-foreground">
+                  {context.data?.buyerName ??
+                    context.data?.buyerId ??
+                    partnerId ?? <span className="text-muted-foreground">—</span>}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Tražena količina</p>
+                <p className="text-sm text-foreground">
+                  {context.data?.qtyRequested !== null && context.data?.qtyRequested !== undefined
+                    ? `${context.data.qtyRequested}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Dokument</p>
+                <p className="text-sm text-foreground">
+                  {context.data?.docType ?? "—"}
+                  {context.data?.poNumber ? ` · ${context.data.poNumber}` : ""}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-muted-foreground">
+                Izvorni tekst maila
+                {context.data?.emailSubject ? ` · ${context.data.emailSubject}` : ""}
+              </p>
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md border bg-background p-2 text-[11px] leading-relaxed text-foreground">
+                {context.data?.sourceText ?? "Nema izvornog teksta"}
+              </pre>
+              {context.data?.sourceLabel && (
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {context.data.sourceLabel}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-1.5">

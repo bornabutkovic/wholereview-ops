@@ -370,3 +370,116 @@ export function useReopenReviewItem() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+// ---------------------------------------------------------------------------
+// PRODUCT_MATCH context (buyer, requested qty, source email text)
+// ---------------------------------------------------------------------------
+
+export type ProductMatchContext = {
+  buyerName: string | null;
+  buyerId: string | null;
+  qtyRequested: number | null;
+  qtyUnit: string | null;
+  rawProductRef: string | null;
+  poNumber: string | null;
+  docType: string | null;
+  emailSubject: string | null;
+  receivedAt: string | null;
+  sourceText: string | null;
+  sourceLabel: string | null;
+};
+
+export function useProductMatchContext(args: {
+  itemId: string | null;
+  partnerId: string | null;
+}) {
+  const { itemId, partnerId } = args;
+  return useQuery({
+    queryKey: ["product-match-context", itemId, partnerId],
+    enabled: !!itemId || !!partnerId,
+    queryFn: async (): Promise<ProductMatchContext> => {
+      const ctx: ProductMatchContext = {
+        buyerName: null,
+        buyerId: partnerId ?? null,
+        qtyRequested: null,
+        qtyUnit: null,
+        rawProductRef: null,
+        poNumber: null,
+        docType: null,
+        emailSubject: null,
+        receivedAt: null,
+        sourceText: null,
+        sourceLabel: null,
+      };
+
+      let requestId: string | null = null;
+
+      if (itemId) {
+        const { data: ri, error: riErr } = await supabase
+          .from("request_items")
+          .select("id, qty_requested, qty_unit, raw_product_ref, incoming_request_id")
+          .eq("id", itemId)
+          .maybeSingle();
+        if (riErr) throw riErr;
+        if (ri) {
+          ctx.qtyRequested = ri.qty_requested ?? null;
+          ctx.qtyUnit = ri.qty_unit ?? null;
+          ctx.rawProductRef = ri.raw_product_ref ?? null;
+          requestId = ri.incoming_request_id ?? null;
+        }
+      }
+
+      let emailLogId: string | null = null;
+
+      if (requestId) {
+        const { data: req, error: reqErr } = await supabase
+          .from("incoming_requests")
+          .select("id, partner_id, po_number, doc_type, raw_text, email_log_id, received_at")
+          .eq("id", requestId)
+          .maybeSingle();
+        if (reqErr) throw reqErr;
+        if (req) {
+          ctx.buyerId = req.partner_id ?? ctx.buyerId;
+          ctx.poNumber = req.po_number ?? null;
+          ctx.docType = req.doc_type ?? null;
+          ctx.receivedAt = req.received_at ?? null;
+          emailLogId = req.email_log_id ?? null;
+          if (req.raw_text) {
+            ctx.sourceText = req.raw_text;
+            ctx.sourceLabel = "incoming_requests.raw_text";
+          }
+        }
+      }
+
+      if (emailLogId) {
+        const { data: el, error: elErr } = await supabase
+          .from("email_log")
+          .select("id, subject, body_text, from_address, received_at, partner_id")
+          .eq("id", emailLogId)
+          .maybeSingle();
+        if (elErr) throw elErr;
+        if (el) {
+          ctx.emailSubject = el.subject ?? null;
+          ctx.receivedAt = el.received_at ?? ctx.receivedAt;
+          ctx.buyerId = ctx.buyerId ?? el.partner_id ?? null;
+          if (el.body_text) {
+            ctx.sourceText = el.body_text;
+            ctx.sourceLabel = "email_log.body_text";
+          }
+        }
+      }
+
+      if (ctx.buyerId) {
+        const { data: p, error: pErr } = await supabase
+          .from("partner")
+          .select("partner_id, name")
+          .eq("partner_id", ctx.buyerId)
+          .maybeSingle();
+        if (pErr) throw pErr;
+        ctx.buyerName = p?.name ?? null;
+      }
+
+      return ctx;
+    },
+  });
+}
