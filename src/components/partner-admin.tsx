@@ -62,19 +62,42 @@ async function countRefs(partnerId: string): Promise<Record<string, number>> {
   return out;
 }
 
+/**
+ * Next free partner id, computed from the real MAX of the numeric suffix.
+ * String ordering is wrong here ("PT70" sorts above "PT0029"), so we scan the
+ * ids and take the numeric maximum.
+ */
 async function nextPartnerId(): Promise<string> {
-  const { data, error } = await supabase
-    .from("partner")
-    .select("partner_id")
-    .like("partner_id", "PT%")
-    .order("partner_id", { ascending: false })
-    .limit(1);
-  if (error) throw error;
-  const last = data?.[0]?.partner_id ?? null;
-  const num = last ? parseInt(String(last).replace(/\D/g, ""), 10) : 0;
-  const next = (Number.isNaN(num) ? 0 : num) + 1;
-  return `PT${String(next).padStart(4, "0")}`;
+  const ids: string[] = [];
+  const pageSize = 1000;
+  for (let page = 0; ; page += 1) {
+    const { data, error } = await supabase
+      .from("partner")
+      .select("partner_id")
+      .range(page * pageSize, page * pageSize + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    ids.push(...rows.map((r) => String(r.partner_id)));
+    if (rows.length < pageSize) break;
+  }
+  const max = ids.reduce((acc, id) => {
+    const m = /^PT(\d+)$/i.exec(id.trim());
+    if (!m) return acc;
+    const n = parseInt(m[1], 10);
+    return Number.isNaN(n) ? acc : Math.max(acc, n);
+  }, 0);
+  return `PT${String(max + 1).padStart(4, "0")}`;
 }
+
+function isMissingColumn(message: string, column: string) {
+  return (
+    /PGRST204/i.test(message) ||
+    new RegExp(`column .*${column}|'${column}' column|${column}.* does not exist`, "i").test(
+      message,
+    )
+  );
+}
+
 
 // ---------------------------------------------------------------------------
 // Edit / create dialog
