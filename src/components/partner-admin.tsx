@@ -62,19 +62,42 @@ async function countRefs(partnerId: string): Promise<Record<string, number>> {
   return out;
 }
 
+/**
+ * Next free partner id, computed from the real MAX of the numeric suffix.
+ * String ordering is wrong here ("PT70" sorts above "PT0029"), so we scan the
+ * ids and take the numeric maximum.
+ */
 async function nextPartnerId(): Promise<string> {
-  const { data, error } = await supabase
-    .from("partner")
-    .select("partner_id")
-    .like("partner_id", "PT%")
-    .order("partner_id", { ascending: false })
-    .limit(1);
-  if (error) throw error;
-  const last = data?.[0]?.partner_id ?? null;
-  const num = last ? parseInt(String(last).replace(/\D/g, ""), 10) : 0;
-  const next = (Number.isNaN(num) ? 0 : num) + 1;
-  return `PT${String(next).padStart(4, "0")}`;
+  const ids: string[] = [];
+  const pageSize = 1000;
+  for (let page = 0; ; page += 1) {
+    const { data, error } = await supabase
+      .from("partner")
+      .select("partner_id")
+      .range(page * pageSize, page * pageSize + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    ids.push(...rows.map((r) => String(r.partner_id)));
+    if (rows.length < pageSize) break;
+  }
+  const max = ids.reduce((acc, id) => {
+    const m = /^PT(\d+)$/i.exec(id.trim());
+    if (!m) return acc;
+    const n = parseInt(m[1], 10);
+    return Number.isNaN(n) ? acc : Math.max(acc, n);
+  }, 0);
+  return `PT${String(max + 1).padStart(4, "0")}`;
 }
+
+function isMissingColumn(message: string, column: string) {
+  return (
+    /PGRST204/i.test(message) ||
+    new RegExp(`column .*${column}|'${column}' column|${column}.* does not exist`, "i").test(
+      message,
+    )
+  );
+}
+
 
 // ---------------------------------------------------------------------------
 // Edit / create dialog
@@ -120,34 +143,58 @@ export function PartnerEditDialog(props: {
         ...roleFlags,
       };
 
+      const trimmedCode = code.trim() || null;
+
       if (isCreate) {
-        const newId = await nextPartnerId();
-        const withCode = { ...base, partner_id: newId, code: code.trim() || null };
-        let { error } = await anyTable("partner").insert(withCode);
-        if (error && /code/i.test(error.message)) {
-          // `code` column doesn't exist — insert without it.
-          const retry = await anyTable("partner").insert({
+        let newId = await nextPartnerId();
+        let codeDropped = false;
+
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          const payload: Record<string, unknown> = {
             ...base,
             partner_id: newId,
-          });
-          error = retry.error;
+            ...(codeDropped ? {} : { code: trimmedCode }),
+          };
+          const { data, error } = await anyTable("partner")
+            .insert(payload)
+            .select("partner_id")
+            .single();
+
+          if (!error) return String(data?.partner_id ?? newId);
+
+          const msg = String(error.message ?? "");
+          // `code` column not in the schema — retry without it, but tell the user.
+          if (!codeDropped && trimmedCode !== null && isMissingColumn(msg, "code")) {
+            codeDropped = true;
+            continue;
+          }
+          // Primary key already taken — bump the number and retry.
+          if (error.code === "23505" || /duplicate key|already exists/i.test(msg)) {
+            const n = parseInt(newId.slice(2), 10) + 1;
+            newId = `PT${String(n).padStart(4, "0")}`;
+            continue;
+          }
+          throw new Error(`${msg}${error.code ? ` (${error.code})` : ""}`);
         }
-        if (error) throw new Error(error.message);
-        return newId;
+        throw new Error("Nije moguće generirati slobodan partner_id");
       }
 
-      const withCode = { ...base, code: code.trim() || null };
-      let { error } = await anyTable("partner")
-        .update(withCode)
-        .eq("partner_id", partner!.partner_id);
-      if (error && /code/i.test(error.message)) {
-        const retry = await anyTable("partner")
-          .update(base)
+      let codeDropped = false;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const payload = codeDropped ? base : { ...base, code: trimmedCode };
+        const { error } = await anyTable("partner")
+          .update(payload)
           .eq("partner_id", partner!.partner_id);
-        error = retry.error;
+        if (!error) return partner!.partner_id;
+        const msg = String(error.message ?? "");
+        if (!codeDropped && isMissingColumn(msg, "code")) {
+          codeDropped = true;
+          continue;
+        }
+        throw new Error(`${msg}${error.code ? ` (${error.code})` : ""}`);
       }
-      if (error) throw new Error(error.message);
       return partner!.partner_id;
+
     },
     onSuccess: (id) => {
       toast.success(isCreate ? `Partner ${id} dodan` : "Partner ažuriran");
@@ -158,6 +205,14 @@ export function PartnerEditDialog(props: {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const nextId = useQuery({
+    queryKey: ["partner-next-id"],
+    enabled: open && isCreate,
+    staleTime: 0,
+    queryFn: nextPartnerId,
+  });
+
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
@@ -165,9 +220,17 @@ export function PartnerEditDialog(props: {
           <DialogTitle className="text-sm">
             {isCreate ? "Novi partner" : "Uredi partnera"}
           </DialogTitle>
-          {!isCreate && (
+          {!isCreate ? (
             <DialogDescription className="font-mono text-xs">
               {partner!.partner_id}
+            </DialogDescription>
+          ) : (
+            <DialogDescription className="font-mono text-xs">
+              {nextId.isLoading
+                ? "Generiranje ID-a…"
+                : nextId.data
+                  ? `ID: ${nextId.data}`
+                  : "ID se dodjeljuje pri spremanju"}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -184,10 +247,11 @@ export function PartnerEditDialog(props: {
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="npr. NOVO-HR"
+              placeholder="npr. ORIFARM, PHSHOP"
               onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             />
           </Field>
+
           <Field label="Država">
             <Input
               value={country}
