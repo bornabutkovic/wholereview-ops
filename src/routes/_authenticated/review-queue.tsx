@@ -334,23 +334,34 @@ function ReviewQueuePage() {
                   if (!isGrouped) return renderItemRow(group.items[0], false);
 
                   const first = group.items[0];
-                  const openCount = group.items.filter((i) => i.status === "OPEN").length;
+                  const openItems = group.items.filter((i) => i.status === "OPEN");
+                  const openCount = openItems.length;
 
                   return (
                     <Fragment key={group.key}>
                       <TableRow
                         className="cursor-pointer text-sm"
-                        onClick={() =>
-                          setExpanded((prev) => ({ ...prev, [group.key]: !isOpen }))
-                        }
+                        onClick={() => {
+                          if (openCount > 0) setActive(openItems);
+                        }}
                       >
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            {isOpen ? (
-                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                            )}
+                            <button
+                              type="button"
+                              aria-label={isOpen ? "Collapse group" : "Expand group"}
+                              className="rounded p-0.5 hover:bg-muted"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpanded((prev) => ({ ...prev, [group.key]: !isOpen }));
+                              }}
+                            >
+                              {isOpen ? (
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                            </button>
                             <Badge
                               variant="outline"
                               className={`font-medium ${CATEGORY_STYLES[first.category]}`}
@@ -359,6 +370,7 @@ function ReviewQueuePage() {
                             </Badge>
                           </div>
                         </TableCell>
+
                         <TableCell className="max-w-0">
                           <div className="flex items-center gap-2">
                             <span className="truncate text-[13px] font-medium text-foreground">
