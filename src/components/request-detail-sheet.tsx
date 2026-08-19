@@ -116,9 +116,21 @@ interface ItemPriceState {
   yourPrice: string;
   // baseline price returned by edge fn (for default if user changes margin)
   suggestedPrice: number | null;
-  // implied margin derived from yourPrice; null when no max_historical_price
+  // margin derived from yourPrice vs. wholesale cost; null when no cost basis
   impliedMargin: number | null;
+  // true when impliedMargin matches one of the preset margins
+  snapped: boolean;
 }
+
+/** Markup on cost: ((price - cost) / cost) * 100, rounded to 1 decimal. */
+function computeMarginPct(price: number | null, cost: number | null): number | null {
+  if (price == null || cost == null || !Number.isFinite(price) || !Number.isFinite(cost)) {
+    return null;
+  }
+  if (cost === 0) return null;
+  return Number((((price - cost) / cost) * 100).toFixed(1));
+}
+
 
 export function RequestDetailSheet({
   context,
@@ -173,6 +185,73 @@ export function RequestDetailSheet({
     })),
   });
 
+  // Wholesale cost basis per SKU: np_sku.materijal_code -> np_catalog_reference.wholesale_price_eur
+  const skuIds = itemList
+    .map((it) => it.np_sku_id)
+    .filter((v): v is string => !!v)
+    .sort();
+
+  const costs = useQuery({
+    queryKey: ["wholesale-cost", skuIds.join("|")],
+    enabled: skuIds.length > 0,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const client = supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            in: (c: string, v: unknown[]) => Promise<{ data: unknown; error: unknown }>;
+          };
+        };
+      };
+      const skuRes = await client
+        .from("np_sku")
+        .select("np_sku_id, materijal_code")
+        .in("np_sku_id", skuIds);
+      if (skuRes.error) throw skuRes.error;
+      const skuRows = (skuRes.data ?? []) as {
+        np_sku_id: string;
+        materijal_code: string | null;
+      }[];
+      const codes = Array.from(
+        new Set(skuRows.map((r) => r.materijal_code).filter((c): c is string => !!c)),
+      );
+      if (codes.length === 0) return {};
+
+      const refRes = await client
+        .from("np_catalog_reference")
+        .select("materijal_code, wholesale_price_eur")
+        .in("materijal_code", codes);
+      if (refRes.error) throw refRes.error;
+      const refRows = (refRes.data ?? []) as {
+        materijal_code: string | null;
+        wholesale_price_eur: number | string | null;
+      }[];
+      const byCode: Record<string, number> = {};
+      refRows.forEach((r) => {
+        if (!r.materijal_code || r.wholesale_price_eur == null) return;
+        const n = Number(r.wholesale_price_eur);
+        if (Number.isFinite(n)) byCode[r.materijal_code] = n;
+      });
+
+      const bySku: Record<string, number> = {};
+      skuRows.forEach((r) => {
+        if (r.materijal_code && byCode[r.materijal_code] != null) {
+          bySku[r.np_sku_id] = byCode[r.materijal_code];
+        }
+      });
+      return bySku;
+    },
+  });
+
+  const costMap = costs.data ?? {};
+
+  // Cost basis for margin math: wholesale price, falling back to historical max.
+  const costBasisFor = (it: RequestItem, s?: SuggestPriceResponse) => {
+    const wholesale = it.np_sku_id ? costMap[it.np_sku_id] : undefined;
+    if (wholesale != null && Number.isFinite(wholesale) && wholesale !== 0) return wholesale;
+    const max = s?.max_historical_price ?? null;
+    return max != null && max !== 0 ? max : null;
+  };
+
   // Local editable state per item
   const [priceState, setPriceState] = useState<Record<string, ItemPriceState>>({});
 
@@ -183,18 +262,28 @@ export function RequestDetailSheet({
       itemList.forEach((it, idx) => {
         const s = suggestionQueries[idx]?.data;
         if (s && next[it.id] === undefined) {
+          const pct = computeMarginPct(s.suggested_price ?? null, costBasisFor(it, s));
+          const snapped =
+            pct != null &&
+            MARGIN_OPTIONS.some((m) => Math.abs(m - pct) <= 1);
           next[it.id] = {
             margin: 11,
             yourPrice: toInputString(s.suggested_price),
             suggestedPrice: s.suggested_price ?? null,
-            impliedMargin: null,
+            impliedMargin: pct,
+            snapped: snapped || pct == null,
           };
         }
       });
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestionQueries.map((q) => q.dataUpdatedAt).join("|"), itemList.length]);
+  }, [
+    suggestionQueries.map((q) => q.dataUpdatedAt).join("|"),
+    itemList.length,
+    costs.dataUpdatedAt,
+  ]);
+
 
   // Reset state when sheet target changes
   useEffect(() => {
@@ -242,8 +331,8 @@ export function RequestDetailSheet({
   const updateMargin = (it: RequestItem, margin: Margin) => {
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
-    const max = s?.max_historical_price ?? null;
-    const recalculated = max != null ? Number((max * (1 + margin / 100)).toFixed(2)) : null;
+    const cost = costBasisFor(it, s);
+    const recalculated = cost != null ? Number((cost * (1 + margin / 100)).toFixed(2)) : null;
     setPriceState((prev) => ({
       ...prev,
       [it.id]: {
@@ -251,7 +340,8 @@ export function RequestDetailSheet({
         suggestedPrice: recalculated ?? prev[it.id]?.suggestedPrice ?? null,
         yourPrice:
           recalculated != null ? toInputString(recalculated) : (prev[it.id]?.yourPrice ?? ""),
-        impliedMargin: null,
+        impliedMargin: recalculated != null ? margin : (prev[it.id]?.impliedMargin ?? null),
+        snapped: true,
       },
     }));
   };
@@ -259,25 +349,27 @@ export function RequestDetailSheet({
   const updateYourPrice = (it: RequestItem, value: string) => {
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
-    const max = s?.max_historical_price ?? null;
+    const cost = costBasisFor(it, s);
     const numeric = parseDecimalInput(value);
 
     setPriceState((prev) => {
       const previous = prev[it.id];
       let margin: Margin = previous?.margin ?? 11;
       let impliedMargin: number | null = null;
+      let snapped = true;
 
-      if (max != null && max !== 0 && !Number.isNaN(numeric)) {
+      const pct = Number.isNaN(numeric) ? null : computeMarginPct(numeric, cost);
+      if (pct != null) {
         // Always recalculate the percentage from the manually entered price.
-        const pct = Number((((numeric / max) - 1) * 100).toFixed(1));
+        impliedMargin = pct;
         const closest = MARGIN_OPTIONS.reduce((a, b) =>
-          Math.abs(b - pct) < Math.abs(a - pct) ? b : a
+          Math.abs(b - pct) < Math.abs(a - pct) ? b : a,
         );
         if (Math.abs(closest - pct) <= 1) {
           margin = closest;
-          impliedMargin = null;
+          snapped = true;
         } else {
-          impliedMargin = pct;
+          snapped = false;
         }
       }
 
@@ -288,10 +380,12 @@ export function RequestDetailSheet({
           suggestedPrice: previous?.suggestedPrice ?? null,
           yourPrice: value,
           impliedMargin,
+          snapped,
         },
       };
     });
   };
+
 
 
 
@@ -461,9 +555,23 @@ export function RequestDetailSheet({
                                 {loadingSuggestion ? (
                                   <span className="text-xs text-muted-foreground">…</span>
                                 ) : s?.suggested_price != null ? (
-                                  <Badge className="bg-blue-600 font-bold text-white tabular-nums hover:bg-blue-700">
-                                    {formatMoney(s.suggested_price)}
-                                  </Badge>
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge className="bg-blue-600 font-bold text-white tabular-nums hover:bg-blue-700">
+                                      {formatMoney(s.suggested_price)}
+                                    </Badge>
+                                    {(() => {
+                                      const pct = computeMarginPct(
+                                        s.suggested_price ?? null,
+                                        costBasisFor(it, s),
+                                      );
+                                      if (pct == null) return null;
+                                      return (
+                                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                                          {formatPercent(pct)}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
                                     No history
@@ -473,20 +581,14 @@ export function RequestDetailSheet({
                               <TableCell>
                                 <div className="flex items-center gap-1.5">
                                   <Select
-                                    value={
-                                      ps?.impliedMargin != null
-                                        ? ""
-                                        : String(ps?.margin ?? 11)
-                                    }
+                                    value={ps && !ps.snapped ? "" : String(ps?.margin ?? 11)}
                                     onValueChange={(v) =>
                                       updateMargin(it, Number(v) as Margin)
                                     }
                                   >
                                     <SelectTrigger className="h-8 w-[72px] text-xs">
                                       <SelectValue
-                                        placeholder={
-                                          ps?.impliedMargin != null ? "—" : undefined
-                                        }
+                                        placeholder={ps && !ps.snapped ? "—" : undefined}
                                       />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -497,7 +599,7 @@ export function RequestDetailSheet({
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  {ps?.impliedMargin != null && (
+                                  {ps?.impliedMargin != null && !ps.snapped && (
                                     <Badge
                                       variant="outline"
                                       className={`text-[10px] tabular-nums ${
@@ -509,6 +611,7 @@ export function RequestDetailSheet({
                                       Custom: {formatPercent(ps.impliedMargin)}
                                     </Badge>
                                   )}
+
                                 </div>
                               </TableCell>
                               <TableCell>
