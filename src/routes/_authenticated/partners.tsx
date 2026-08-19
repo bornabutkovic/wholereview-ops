@@ -67,6 +67,7 @@ export const Route = createFileRoute("/_authenticated/partners")({
 interface PartnerRow {
   partner_id: string;
   name: string;
+  code: string | null;
   country: string | null;
   contact_email: string | null;
   is_buyer: boolean;
