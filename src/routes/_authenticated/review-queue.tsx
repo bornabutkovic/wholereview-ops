@@ -1146,9 +1146,12 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
                 Izvorni tekst maila
                 {context.data?.emailSubject ? ` · ${context.data.emailSubject}` : ""}
               </p>
-              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md border bg-background p-2 text-[11px] leading-relaxed text-foreground">
-                {context.data?.sourceText ?? "Nema izvornog teksta"}
-              </pre>
+              <SourceTextViewer
+                text={context.data?.sourceText ?? null}
+                needle={rawInput ?? null}
+                ready={!context.isLoading}
+              />
+
               {context.data?.sourceLabel && (
                 <p className="mt-1 text-[10px] text-muted-foreground">
                   {context.data.sourceLabel}
