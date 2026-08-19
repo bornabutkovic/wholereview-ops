@@ -413,8 +413,9 @@ function ReviewQueuePage() {
         </div>
 
         <ResolveDialog
-          item={active}
+          items={active}
           onClose={() => setActive(null)}
+
           onResolved={() => {
             qc.invalidateQueries({ queryKey: ["review-queue"] });
             setActive(null);
