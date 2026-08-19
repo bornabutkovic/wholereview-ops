@@ -581,6 +581,7 @@ function ResolveDialog(props: ResolveDialogProps) {
 
 type GenericBodyProps = {
   item: ReviewItem;
+  siblings?: ReviewItem[];
   readOnly: boolean;
   userId: string | null;
   onResolved: () => void;
@@ -588,17 +589,25 @@ type GenericBodyProps = {
 
 function GenericBody(props: GenericBodyProps) {
   const { item, readOnly, userId, onResolved } = props;
+  const targets = props.siblings?.length ? props.siblings : [item];
   const [note, setNote] = useState("");
   const mutation = useMutation({
-    mutationFn: (status: "RESOLVED" | "DISMISSED") =>
-      resolveReviewItem({ id: item.id, status, note: note.trim(), userId }),
+    mutationFn: async (status: "RESOLVED" | "DISMISSED") => {
+      for (const target of targets) {
+        await resolveReviewItem({ id: target.id, status, note: note.trim(), userId });
+      }
+    },
     onSuccess: (_d, status) => {
-      toast.success(status === "RESOLVED" ? "Marked as resolved" : "Dismissed");
+      const suffix = targets.length > 1 ? ` (${targets.length} pojava)` : "";
+      toast.success(
+        (status === "RESOLVED" ? "Marked as resolved" : "Dismissed") + suffix,
+      );
       setNote("");
       onResolved();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <>
