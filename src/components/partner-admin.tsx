@@ -98,6 +98,22 @@ function isMissingColumn(message: string, column: string) {
   );
 }
 
+function describeError(error: {
+  message?: string;
+  code?: string;
+  details?: string | null;
+  hint?: string | null;
+}) {
+  const msg = String(error.message ?? "Nepoznata greška");
+  const code = error.code ? ` (${error.code})` : "";
+  if (error.code === "42501") {
+    return `Baza je odbila upis: nema INSERT dozvole na tablici partner${code}. Potreban je GRANT INSERT / RLS policy.`;
+  }
+  const extra = error.details ? ` — ${error.details}` : "";
+  return `${msg}${code}${extra}`;
+}
+
+
 
 // ---------------------------------------------------------------------------
 // Edit / create dialog
