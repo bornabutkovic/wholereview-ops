@@ -143,34 +143,58 @@ export function PartnerEditDialog(props: {
         ...roleFlags,
       };
 
+      const trimmedCode = code.trim() || null;
+
       if (isCreate) {
-        const newId = await nextPartnerId();
-        const withCode = { ...base, partner_id: newId, code: code.trim() || null };
-        let { error } = await anyTable("partner").insert(withCode);
-        if (error && /code/i.test(error.message)) {
-          // `code` column doesn't exist — insert without it.
-          const retry = await anyTable("partner").insert({
+        let newId = await nextPartnerId();
+        let codeDropped = false;
+
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          const payload: Record<string, unknown> = {
             ...base,
             partner_id: newId,
-          });
-          error = retry.error;
+            ...(codeDropped ? {} : { code: trimmedCode }),
+          };
+          const { data, error } = await anyTable("partner")
+            .insert(payload)
+            .select("partner_id")
+            .single();
+
+          if (!error) return String(data?.partner_id ?? newId);
+
+          const msg = String(error.message ?? "");
+          // `code` column not in the schema — retry without it, but tell the user.
+          if (!codeDropped && trimmedCode !== null && isMissingColumn(msg, "code")) {
+            codeDropped = true;
+            continue;
+          }
+          // Primary key already taken — bump the number and retry.
+          if (error.code === "23505" || /duplicate key|already exists/i.test(msg)) {
+            const n = parseInt(newId.slice(2), 10) + 1;
+            newId = `PT${String(n).padStart(4, "0")}`;
+            continue;
+          }
+          throw new Error(`${msg}${error.code ? ` (${error.code})` : ""}`);
         }
-        if (error) throw new Error(error.message);
-        return newId;
+        throw new Error("Nije moguće generirati slobodan partner_id");
       }
 
-      const withCode = { ...base, code: code.trim() || null };
-      let { error } = await anyTable("partner")
-        .update(withCode)
-        .eq("partner_id", partner!.partner_id);
-      if (error && /code/i.test(error.message)) {
-        const retry = await anyTable("partner")
-          .update(base)
+      let codeDropped = false;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const payload = codeDropped ? base : { ...base, code: trimmedCode };
+        const { error } = await anyTable("partner")
+          .update(payload)
           .eq("partner_id", partner!.partner_id);
-        error = retry.error;
+        if (!error) return partner!.partner_id;
+        const msg = String(error.message ?? "");
+        if (!codeDropped && isMissingColumn(msg, "code")) {
+          codeDropped = true;
+          continue;
+        }
+        throw new Error(`${msg}${error.code ? ` (${error.code})` : ""}`);
       }
-      if (error) throw new Error(error.message);
       return partner!.partner_id;
+
     },
     onSuccess: (id) => {
       toast.success(isCreate ? `Partner ${id} dodan` : "Partner ažuriran");
