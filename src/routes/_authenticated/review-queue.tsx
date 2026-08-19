@@ -929,6 +929,67 @@ type ProductMatchBodyProps = {
   onResolved: () => void;
 };
 
+function SourceTextViewer({
+  text,
+  needle,
+  ready,
+}: {
+  text: string | null;
+  needle: string | null;
+  ready: boolean;
+}) {
+  const boxRef = useRef<HTMLPreElement>(null);
+  const markRef = useRef<HTMLSpanElement>(null);
+
+  const parts = useMemo(() => {
+    const body = text ?? "";
+    const q = (needle ?? "").trim();
+    if (!body || !q) return null;
+    const idx = body.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return null;
+    return {
+      before: body.slice(0, idx),
+      match: body.slice(idx, idx + q.length),
+      after: body.slice(idx + q.length),
+    };
+  }, [text, needle]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const box = boxRef.current;
+    if (!box) return;
+    const mark = markRef.current;
+    if (!mark) {
+      box.scrollTop = 0;
+      return;
+    }
+    // center the first occurrence inside the scroll box
+    const top = mark.offsetTop - box.offsetTop - box.clientHeight / 2 + mark.offsetHeight / 2;
+    box.scrollTop = Math.max(0, top);
+  }, [ready, parts, text]);
+
+  return (
+    <pre
+      ref={boxRef}
+      className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md border bg-background p-2 text-[11px] leading-relaxed text-foreground"
+    >
+      {!text ? (
+        "Nema izvornog teksta"
+      ) : parts ? (
+        <>
+          {parts.before}
+          <span ref={markRef} className="rounded bg-amber-100 px-0.5 font-medium text-amber-900">
+            {parts.match}
+          </span>
+          {parts.after}
+        </>
+      ) : (
+        text
+      )}
+    </pre>
+  );
+}
+
 function ProductMatchBody(props: ProductMatchBodyProps) {
   const { item, userId, onResolved } = props;
   const targets = props.siblings?.length ? props.siblings : [item];
