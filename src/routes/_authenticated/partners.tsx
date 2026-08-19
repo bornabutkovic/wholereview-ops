@@ -67,6 +67,7 @@ export const Route = createFileRoute("/_authenticated/partners")({
 interface PartnerRow {
   partner_id: string;
   name: string;
+  code: string | null;
   country: string | null;
   contact_email: string | null;
   is_buyer: boolean;
@@ -95,16 +96,16 @@ function usePartners(role: Role) {
     queryKey: ["partners-list", role],
     queryFn: async (): Promise<PartnerRow[]> => {
       const col = role === "buyer" ? "is_buyer" : "is_supplier";
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("partner")
         .select(
-          "partner_id, name, country, contact_email, is_buyer, is_supplier, is_mah, notes, created_at, updated_at",
+          "partner_id, name, code, country, contact_email, is_buyer, is_supplier, is_mah, notes, created_at, updated_at",
         )
         .eq(col, true)
         .order("name", { ascending: true })
         .limit(2000);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as PartnerRow[];
     },
   });
 }
@@ -462,7 +463,7 @@ function PartnerDetailSheet(props: {
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Details
                 </h3>
-                <DetailRow icon={Hash} label="Code" value={partner.partner_id} />
+                <DetailRow icon={Hash} label="Code" value={partner.code} />
                 <DetailRow icon={MapPin} label="Country" value={partner.country} />
                 <DetailRow icon={Mail} label="Email" value={partner.contact_email} />
                 <DetailRow icon={FileText} label="Notes" value={partner.notes} />
