@@ -205,6 +205,14 @@ export function PartnerEditDialog(props: {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const nextId = useQuery({
+    queryKey: ["partner-next-id"],
+    enabled: open && isCreate,
+    staleTime: 0,
+    queryFn: nextPartnerId,
+  });
+
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
