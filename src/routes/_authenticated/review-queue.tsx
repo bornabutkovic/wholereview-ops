@@ -501,17 +501,20 @@ function ErrorState(props: { message: string; onRetry: () => void }) {
 }
 
 type ResolveDialogProps = {
-  item: ReviewItem | null;
+  items: ReviewItem[] | null;
   onClose: () => void;
   onResolved: () => void;
   userId: string | null;
 };
 
 function ResolveDialog(props: ResolveDialogProps) {
-  const { item, onClose, onResolved, userId } = props;
+  const { items, onClose, onResolved, userId } = props;
+  const item = items && items.length > 0 ? items[0] : null;
+  const siblings = items ?? [];
   const readOnly = item?.status !== "OPEN";
   const isProductMatch = item?.category === "PRODUCT_MATCH" && !readOnly;
   const isPartnerUnknown = item?.category === "PARTNER_UNKNOWN" && !readOnly;
+  const isBulk = siblings.length > 1;
 
   return (
     <Dialog
@@ -528,27 +531,39 @@ function ResolveDialog(props: ResolveDialogProps) {
         <DialogHeader>
           <DialogTitle className="text-base">
             {readOnly ? "Review item" : "Resolve review item"}
+            {isBulk && (
+              <Badge variant="secondary" className="ml-2 align-middle text-[10px]">
+                ×{siblings.length} pojava
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {item?.category.replace(/_/g, " ").toLowerCase()}
+            {isBulk ? " · rješava sve pojave odjednom" : ""}
           </DialogDescription>
         </DialogHeader>
 
         {item && isProductMatch ? (
           <ProductMatchBody
+            key={item.id}
             item={item}
+            siblings={siblings}
             userId={userId}
             onResolved={onResolved}
           />
         ) : item && isPartnerUnknown ? (
           <PartnerUnknownBody
+            key={item.id}
             item={item}
+            siblings={siblings}
             userId={userId}
             onResolved={onResolved}
           />
         ) : item ? (
           <GenericBody
+            key={item.id}
             item={item}
+            siblings={siblings}
             readOnly={readOnly}
             userId={userId}
             onResolved={onResolved}
@@ -558,6 +573,7 @@ function ResolveDialog(props: ResolveDialogProps) {
     </Dialog>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Generic fallback body
