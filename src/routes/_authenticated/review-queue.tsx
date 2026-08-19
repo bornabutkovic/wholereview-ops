@@ -171,7 +171,7 @@ function ReviewQueuePage() {
   const [status, setStatus] = useState<ReviewStatus | "ALL">("OPEN");
   const [category, setCategory] = useState<ReviewCategory | "ALL">("ALL");
   const [search, setSearch] = useState("");
-  const [active, setActive] = useState<ReviewItem | null>(null);
+  const [active, setActive] = useState<ReviewItem[] | null>(null);
   const [reopenItem, setReopenItem] = useState<ReviewItem | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
