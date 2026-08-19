@@ -220,9 +220,17 @@ export function PartnerEditDialog(props: {
           <DialogTitle className="text-sm">
             {isCreate ? "Novi partner" : "Uredi partnera"}
           </DialogTitle>
-          {!isCreate && (
+          {!isCreate ? (
             <DialogDescription className="font-mono text-xs">
               {partner!.partner_id}
+            </DialogDescription>
+          ) : (
+            <DialogDescription className="font-mono text-xs">
+              {nextId.isLoading
+                ? "Generiranje ID-a…"
+                : nextId.data
+                  ? `ID: ${nextId.data}`
+                  : "ID se dodjeljuje pri spremanju"}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -239,10 +247,11 @@ export function PartnerEditDialog(props: {
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="npr. NOVO-HR"
+              placeholder="npr. ORIFARM, PHSHOP"
               onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             />
           </Field>
+
           <Field label="Država">
             <Input
               value={country}
