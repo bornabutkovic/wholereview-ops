@@ -720,15 +720,20 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
 
 
   const dismiss = useMutation({
-    mutationFn: () =>
-      resolveReviewItem({
-        id: item.id,
-        status: "DISMISSED",
-        note: "Dismissed (no partner assigned)",
-        userId,
-      }),
+    mutationFn: async () => {
+      for (const target of targets) {
+        await resolveReviewItem({
+          id: target.id,
+          status: "DISMISSED",
+          note: "Dismissed (no partner assigned)",
+          userId,
+        });
+      }
+    },
     onSuccess: () => {
-      toast.success("Dismissed");
+      toast.success(
+        targets.length > 1 ? `Dismissed (${targets.length} pojava)` : "Dismissed",
+      );
       onResolved();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -742,22 +747,33 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
       return;
     }
     try {
-      const result = await assign.mutateAsync({
-        partnerId: selectedPartner.partner_id,
-        partnerName: selectedPartner.name || selectedPartner.partner_id,
-        fromAddress: emailToAssign.trim() || null,
-        emailLogId,
-        reviewItemId: item.id,
-        userId,
-      });
+      let matched = 0;
+      let sentToReview = 0;
+      for (const target of targets) {
+        const targetPayload: PartnerUnknownPayload =
+          target.payload && typeof target.payload === "object"
+            ? (target.payload as PartnerUnknownPayload)
+            : {};
+        const result = await assign.mutateAsync({
+          partnerId: selectedPartner.partner_id,
+          partnerName: selectedPartner.name || selectedPartner.partner_id,
+          fromAddress: emailToAssign.trim() || null,
+          emailLogId: targetPayload.email_log_id ?? emailLogId,
+          reviewItemId: target.id,
+          userId,
+        });
+        matched += result.matched;
+        sentToReview += result.sentToReview;
+      }
       toast.success(
-        `Partner linked. ${result.matched} products auto-matched, ${result.sentToReview} sent to review queue.`,
+        `Partner linked${targets.length > 1 ? ` (${targets.length} pojava)` : ""}. ${matched} products auto-matched, ${sentToReview} sent to review queue.`,
       );
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
+
 
   return (
     <>
