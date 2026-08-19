@@ -388,19 +388,20 @@ function ReviewQueuePage() {
                           {formatDistanceToNow(new Date(first.created_at), { addSuffix: true })}
                         </TableCell>
                         <TableCell className="text-right">
-                          {first.status === "OPEN" ? (
+                          {openCount > 0 ? (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActive(first);
+                                setActive(openItems);
                               }}
                             >
-                              Resolve
+                              Resolve ×{openCount}
                             </Button>
                           ) : null}
                         </TableCell>
+
                       </TableRow>
                       {isOpen && group.items.map((item) => renderItemRow(item, true))}
                     </Fragment>
