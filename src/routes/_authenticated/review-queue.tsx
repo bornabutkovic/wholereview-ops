@@ -118,8 +118,9 @@ function rawInputKey(item: ReviewItem): string | null {
     item.payload && typeof item.payload === "object"
       ? (item.payload as ProductMatchPayload)
       : {};
-  const raw =
-    payload.raw_input ?? payload.raw_product_ref ?? item.description ?? null;
+  // NEVER fall back to description: it is a formatted per-run display string
+  // and varies between duplicate occurrences of the same underlying issue.
+  const raw = payload.raw_product_ref ?? payload.raw_input ?? null;
   const value = (raw ?? "").trim().replace(/\s+/g, " ");
   return value ? value.toLowerCase() : null;
 }
@@ -129,43 +130,50 @@ function senderKey(item: ReviewItem): string {
     item.payload && typeof item.payload === "object"
       ? (item.payload as ProductMatchPayload & PartnerUnknownPayload)
       : {};
-  const sender = payload.partner_id ?? payload.from_address ?? "";
+  const sender = payload.from_address ?? payload.partner_id ?? "";
   return String(sender).trim().toLowerCase();
+}
+
+/** Duplicate signal: same item_id, or same raw_product_ref + same sender. */
+function groupSignature(item: ReviewItem): string | null {
+  if (item.item_id) return `item:${item.category}:${item.status}:${item.item_id}`;
+  const raw = rawInputKey(item);
+  if (!raw) return null;
+  return `raw:${item.category}:${item.status}:${senderKey(item)}:${raw}`;
 }
 
 function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
   const groups: ReviewGroup[] = [];
   const index = new Map<string, ReviewGroup>();
 
+  const labelOf = (item: ReviewItem) => {
+    const payload =
+      item.payload && typeof item.payload === "object"
+        ? (item.payload as ProductMatchPayload)
+        : {};
+    return payload.raw_product_ref ?? payload.raw_input ?? item.description ?? "—";
+  };
+
   for (const item of items) {
-    const key = rawInputKey(item);
-    if (!key) {
+    const groupKey = groupSignature(item);
+    if (!groupKey) {
       groups.push({ key: item.id, label: item.description ?? "—", items: [item] });
       continue;
     }
-    // group only rows that share category + sender + raw name + status
-    const groupKey = `raw:${item.category}:${item.status}:${senderKey(item)}:${key}`;
 
     const existing = index.get(groupKey);
     if (existing) {
       existing.items.push(item);
       continue;
     }
-    const payload =
-      item.payload && typeof item.payload === "object"
-        ? (item.payload as ProductMatchPayload)
-        : {};
-    const group: ReviewGroup = {
-      key: groupKey,
-      label: payload.raw_input ?? payload.raw_product_ref ?? item.description ?? "—",
-      items: [item],
-    };
+    const group: ReviewGroup = { key: groupKey, label: labelOf(item), items: [item] };
     index.set(groupKey, group);
     groups.push(group);
   }
 
   return groups;
 }
+
 
 
 function ReviewQueuePage() {
