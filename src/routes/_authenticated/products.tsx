@@ -42,6 +42,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CatalogBrowser } from "@/components/catalog-browser";
+
 
 export const Route = createFileRoute("/_authenticated/products")({
   component: ProductsPage,
