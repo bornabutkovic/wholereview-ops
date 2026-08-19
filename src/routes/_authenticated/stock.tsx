@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 
 import { supabase } from "@/lib/supabase";
 import { formatQty } from "@/lib/format";
+import { WarehouseReceiptUpload } from "@/components/warehouse-receipt-upload";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
