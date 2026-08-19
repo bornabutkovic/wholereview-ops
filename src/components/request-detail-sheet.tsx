@@ -116,9 +116,21 @@ interface ItemPriceState {
   yourPrice: string;
   // baseline price returned by edge fn (for default if user changes margin)
   suggestedPrice: number | null;
-  // implied margin derived from yourPrice; null when no max_historical_price
+  // margin derived from yourPrice vs. wholesale cost; null when no cost basis
   impliedMargin: number | null;
+  // true when impliedMargin matches one of the preset margins
+  snapped: boolean;
 }
+
+/** Markup on cost: ((price - cost) / cost) * 100, rounded to 1 decimal. */
+function computeMarginPct(price: number | null, cost: number | null): number | null {
+  if (price == null || cost == null || !Number.isFinite(price) || !Number.isFinite(cost)) {
+    return null;
+  }
+  if (cost === 0) return null;
+  return Number((((price - cost) / cost) * 100).toFixed(1));
+}
+
 
 export function RequestDetailSheet({
   context,
