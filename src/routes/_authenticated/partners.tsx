@@ -99,7 +99,7 @@ function usePartners(role: Role) {
       const { data, error } = await supabase
         .from("partner")
         .select(
-          "partner_id, name, country, contact_email, is_buyer, is_supplier, is_mah, notes, created_at, updated_at",
+          "partner_id, name, code, country, contact_email, is_buyer, is_supplier, is_mah, notes, created_at, updated_at",
         )
         .eq(col, true)
         .order("name", { ascending: true })
@@ -463,7 +463,7 @@ function PartnerDetailSheet(props: {
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Details
                 </h3>
-                <DetailRow icon={Hash} label="Code" value={partner.partner_id} />
+                <DetailRow icon={Hash} label="Code" value={partner.code} />
                 <DetailRow icon={MapPin} label="Country" value={partner.country} />
                 <DetailRow icon={Mail} label="Email" value={partner.contact_email} />
                 <DetailRow icon={FileText} label="Notes" value={partner.notes} />
