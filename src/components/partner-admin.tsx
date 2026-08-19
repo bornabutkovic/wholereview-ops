@@ -146,7 +146,7 @@ export function PartnerEditDialog(props: {
       const trimmedCode = code.trim() || null;
 
       if (isCreate) {
-        let newId = await nextPartnerId();
+        let newId = nextId.data ?? (await nextPartnerId());
         let codeDropped = false;
 
         for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -155,15 +155,23 @@ export function PartnerEditDialog(props: {
             partner_id: newId,
             ...(codeDropped ? {} : { code: trimmedCode }),
           };
-          const { data, error } = await anyTable("partner")
-            .insert(payload)
-            .select("partner_id")
-            .single();
+          // No .select() here: with RLS/grants that allow INSERT but not SELECT,
+          // asking for the row back turns a successful write into an error.
+          const { error } = await anyTable("partner").insert(payload);
 
-          if (!error) return String(data?.partner_id ?? newId);
+          if (!error) return newId;
 
           const msg = String(error.message ?? "");
-          // `code` column not in the schema — retry without it, but tell the user.
+          // eslint-disable-next-line no-console
+          console.error("[partner insert] failed", {
+            code: error.code,
+            message: msg,
+            details: error.details,
+            hint: error.hint,
+            payload,
+          });
+
+          // `code` column not in the schema — retry without it.
           if (!codeDropped && trimmedCode !== null && isMissingColumn(msg, "code")) {
             codeDropped = true;
             continue;
@@ -174,7 +182,7 @@ export function PartnerEditDialog(props: {
             newId = `PT${String(n).padStart(4, "0")}`;
             continue;
           }
-          throw new Error(`${msg}${error.code ? ` (${error.code})` : ""}`);
+          throw new Error(describeError(error));
         }
         throw new Error("Nije moguće generirati slobodan partner_id");
       }
@@ -187,15 +195,18 @@ export function PartnerEditDialog(props: {
           .eq("partner_id", partner!.partner_id);
         if (!error) return partner!.partner_id;
         const msg = String(error.message ?? "");
+        // eslint-disable-next-line no-console
+        console.error("[partner update] failed", { code: error.code, message: msg, payload });
         if (!codeDropped && isMissingColumn(msg, "code")) {
           codeDropped = true;
           continue;
         }
-        throw new Error(`${msg}${error.code ? ` (${error.code})` : ""}`);
+        throw new Error(describeError(error));
       }
       return partner!.partner_id;
 
     },
+
     onSuccess: (id) => {
       toast.success(isCreate ? `Partner ${id} dodan` : "Partner ažuriran");
       qc.invalidateQueries({ queryKey: ["partners-list"] });
