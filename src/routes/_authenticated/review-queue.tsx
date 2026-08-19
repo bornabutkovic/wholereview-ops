@@ -123,6 +123,15 @@ function rawInputKey(item: ReviewItem): string | null {
   return value ? value.toLowerCase() : null;
 }
 
+function senderKey(item: ReviewItem): string {
+  const payload =
+    item.payload && typeof item.payload === "object"
+      ? (item.payload as ProductMatchPayload & PartnerUnknownPayload)
+      : {};
+  const sender = payload.partner_id ?? payload.from_address ?? "";
+  return String(sender).trim().toLowerCase();
+}
+
 function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
   const groups: ReviewGroup[] = [];
   const index = new Map<string, ReviewGroup>();
@@ -133,7 +142,8 @@ function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
       groups.push({ key: item.id, label: item.description ?? "—", items: [item] });
       continue;
     }
-    const groupKey = `raw:${item.category}:${key}`;
+    const groupKey = `raw:${item.category}:${senderKey(item)}:${key}`;
+
     const existing = index.get(groupKey);
     if (existing) {
       existing.items.push(item);
@@ -161,7 +171,7 @@ function ReviewQueuePage() {
   const [status, setStatus] = useState<ReviewStatus | "ALL">("OPEN");
   const [category, setCategory] = useState<ReviewCategory | "ALL">("ALL");
   const [search, setSearch] = useState("");
-  const [active, setActive] = useState<ReviewItem | null>(null);
+  const [active, setActive] = useState<ReviewItem[] | null>(null);
   const [reopenItem, setReopenItem] = useState<ReviewItem | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -305,7 +315,7 @@ function ReviewQueuePage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {item.status === "OPEN" ? (
-                          <Button size="sm" variant="outline" onClick={() => setActive(item)}>
+                          <Button size="sm" variant="outline" onClick={() => setActive([item])}>
                             Resolve
                           </Button>
                         ) : (
@@ -324,23 +334,34 @@ function ReviewQueuePage() {
                   if (!isGrouped) return renderItemRow(group.items[0], false);
 
                   const first = group.items[0];
-                  const openCount = group.items.filter((i) => i.status === "OPEN").length;
+                  const openItems = group.items.filter((i) => i.status === "OPEN");
+                  const openCount = openItems.length;
 
                   return (
                     <Fragment key={group.key}>
                       <TableRow
                         className="cursor-pointer text-sm"
-                        onClick={() =>
-                          setExpanded((prev) => ({ ...prev, [group.key]: !isOpen }))
-                        }
+                        onClick={() => {
+                          if (openCount > 0) setActive(openItems);
+                        }}
                       >
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            {isOpen ? (
-                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                            )}
+                            <button
+                              type="button"
+                              aria-label={isOpen ? "Collapse group" : "Expand group"}
+                              className="rounded p-0.5 hover:bg-muted"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpanded((prev) => ({ ...prev, [group.key]: !isOpen }));
+                              }}
+                            >
+                              {isOpen ? (
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                            </button>
                             <Badge
                               variant="outline"
                               className={`font-medium ${CATEGORY_STYLES[first.category]}`}
@@ -349,6 +370,7 @@ function ReviewQueuePage() {
                             </Badge>
                           </div>
                         </TableCell>
+
                         <TableCell className="max-w-0">
                           <div className="flex items-center gap-2">
                             <span className="truncate text-[13px] font-medium text-foreground">
@@ -366,19 +388,20 @@ function ReviewQueuePage() {
                           {formatDistanceToNow(new Date(first.created_at), { addSuffix: true })}
                         </TableCell>
                         <TableCell className="text-right">
-                          {first.status === "OPEN" ? (
+                          {openCount > 0 ? (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActive(first);
+                                setActive(openItems);
                               }}
                             >
-                              Resolve
+                              Resolve ×{openCount}
                             </Button>
                           ) : null}
                         </TableCell>
+
                       </TableRow>
                       {isOpen && group.items.map((item) => renderItemRow(item, true))}
                     </Fragment>
@@ -390,8 +413,9 @@ function ReviewQueuePage() {
         </div>
 
         <ResolveDialog
-          item={active}
+          items={active}
           onClose={() => setActive(null)}
+
           onResolved={() => {
             qc.invalidateQueries({ queryKey: ["review-queue"] });
             setActive(null);
@@ -477,17 +501,20 @@ function ErrorState(props: { message: string; onRetry: () => void }) {
 }
 
 type ResolveDialogProps = {
-  item: ReviewItem | null;
+  items: ReviewItem[] | null;
   onClose: () => void;
   onResolved: () => void;
   userId: string | null;
 };
 
 function ResolveDialog(props: ResolveDialogProps) {
-  const { item, onClose, onResolved, userId } = props;
+  const { items, onClose, onResolved, userId } = props;
+  const item = items && items.length > 0 ? items[0] : null;
+  const siblings = items ?? [];
   const readOnly = item?.status !== "OPEN";
   const isProductMatch = item?.category === "PRODUCT_MATCH" && !readOnly;
   const isPartnerUnknown = item?.category === "PARTNER_UNKNOWN" && !readOnly;
+  const isBulk = siblings.length > 1;
 
   return (
     <Dialog
@@ -504,27 +531,39 @@ function ResolveDialog(props: ResolveDialogProps) {
         <DialogHeader>
           <DialogTitle className="text-base">
             {readOnly ? "Review item" : "Resolve review item"}
+            {isBulk && (
+              <Badge variant="secondary" className="ml-2 align-middle text-[10px]">
+                ×{siblings.length} pojava
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {item?.category.replace(/_/g, " ").toLowerCase()}
+            {isBulk ? " · rješava sve pojave odjednom" : ""}
           </DialogDescription>
         </DialogHeader>
 
         {item && isProductMatch ? (
           <ProductMatchBody
+            key={item.id}
             item={item}
+            siblings={siblings}
             userId={userId}
             onResolved={onResolved}
           />
         ) : item && isPartnerUnknown ? (
           <PartnerUnknownBody
+            key={item.id}
             item={item}
+            siblings={siblings}
             userId={userId}
             onResolved={onResolved}
           />
         ) : item ? (
           <GenericBody
+            key={item.id}
             item={item}
+            siblings={siblings}
             readOnly={readOnly}
             userId={userId}
             onResolved={onResolved}
@@ -535,12 +574,14 @@ function ResolveDialog(props: ResolveDialogProps) {
   );
 }
 
+
 // ---------------------------------------------------------------------------
 // Generic fallback body
 // ---------------------------------------------------------------------------
 
 type GenericBodyProps = {
   item: ReviewItem;
+  siblings?: ReviewItem[];
   readOnly: boolean;
   userId: string | null;
   onResolved: () => void;
@@ -548,17 +589,25 @@ type GenericBodyProps = {
 
 function GenericBody(props: GenericBodyProps) {
   const { item, readOnly, userId, onResolved } = props;
+  const targets = props.siblings?.length ? props.siblings : [item];
   const [note, setNote] = useState("");
   const mutation = useMutation({
-    mutationFn: (status: "RESOLVED" | "DISMISSED") =>
-      resolveReviewItem({ id: item.id, status, note: note.trim(), userId }),
+    mutationFn: async (status: "RESOLVED" | "DISMISSED") => {
+      for (const target of targets) {
+        await resolveReviewItem({ id: target.id, status, note: note.trim(), userId });
+      }
+    },
     onSuccess: (_d, status) => {
-      toast.success(status === "RESOLVED" ? "Marked as resolved" : "Dismissed");
+      const suffix = targets.length > 1 ? ` (${targets.length} pojava)` : "";
+      toast.success(
+        (status === "RESOLVED" ? "Marked as resolved" : "Dismissed") + suffix,
+      );
       setNote("");
       onResolved();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <>
@@ -641,12 +690,15 @@ function GenericBody(props: GenericBodyProps) {
 
 type PartnerUnknownBodyProps = {
   item: ReviewItem;
+  siblings?: ReviewItem[];
   userId: string | null;
   onResolved: () => void;
 };
 
 function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
   const { item, userId, onResolved } = props;
+  const targets = props.siblings?.length ? props.siblings : [item];
+
   const partners = usePartners({ buyersOnly: true });
   const assign = useAssignPartner();
   const [partnerId, setPartnerId] = useState<string | null>(null);
@@ -668,15 +720,20 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
 
 
   const dismiss = useMutation({
-    mutationFn: () =>
-      resolveReviewItem({
-        id: item.id,
-        status: "DISMISSED",
-        note: "Dismissed (no partner assigned)",
-        userId,
-      }),
+    mutationFn: async () => {
+      for (const target of targets) {
+        await resolveReviewItem({
+          id: target.id,
+          status: "DISMISSED",
+          note: "Dismissed (no partner assigned)",
+          userId,
+        });
+      }
+    },
     onSuccess: () => {
-      toast.success("Dismissed");
+      toast.success(
+        targets.length > 1 ? `Dismissed (${targets.length} pojava)` : "Dismissed",
+      );
       onResolved();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -690,22 +747,33 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
       return;
     }
     try {
-      const result = await assign.mutateAsync({
-        partnerId: selectedPartner.partner_id,
-        partnerName: selectedPartner.name || selectedPartner.partner_id,
-        fromAddress: emailToAssign.trim() || null,
-        emailLogId,
-        reviewItemId: item.id,
-        userId,
-      });
+      let matched = 0;
+      let sentToReview = 0;
+      for (const target of targets) {
+        const targetPayload: PartnerUnknownPayload =
+          target.payload && typeof target.payload === "object"
+            ? (target.payload as PartnerUnknownPayload)
+            : {};
+        const result = await assign.mutateAsync({
+          partnerId: selectedPartner.partner_id,
+          partnerName: selectedPartner.name || selectedPartner.partner_id,
+          fromAddress: emailToAssign.trim() || null,
+          emailLogId: targetPayload.email_log_id ?? emailLogId,
+          reviewItemId: target.id,
+          userId,
+        });
+        matched += result.matched;
+        sentToReview += result.sentToReview;
+      }
       toast.success(
-        `Partner linked. ${result.matched} products auto-matched, ${result.sentToReview} sent to review queue.`,
+        `Partner linked${targets.length > 1 ? ` (${targets.length} pojava)` : ""}. ${matched} products auto-matched, ${sentToReview} sent to review queue.`,
       );
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
+
 
   return (
     <>
@@ -853,12 +921,14 @@ function extractEmail(text: string): string | null {
 
 type ProductMatchBodyProps = {
   item: ReviewItem;
+  siblings?: ReviewItem[];
   userId: string | null;
   onResolved: () => void;
 };
 
 function ProductMatchBody(props: ProductMatchBodyProps) {
   const { item, userId, onResolved } = props;
+  const targets = props.siblings?.length ? props.siblings : [item];
   const payload: ProductMatchPayload =
     item.payload && typeof item.payload === "object"
       ? (item.payload as ProductMatchPayload)
@@ -885,6 +955,20 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
     [skus.data, suggestedSkuId],
   );
 
+  const targetInfo = (target: ReviewItem) => {
+    const p: ProductMatchPayload =
+      target.payload && typeof target.payload === "object"
+        ? (target.payload as ProductMatchPayload)
+        : {};
+    return {
+      rawInput: p.raw_input ?? p.raw_product_ref ?? target.description ?? rawInput,
+      partnerId: p.partner_id ?? partnerId,
+      itemId: p.item_id ?? target.item_id ?? null,
+    };
+  };
+
+  const bulkSuffix = targets.length > 1 ? ` (${targets.length} pojava)` : "";
+
   const handleConfirm = async () => {
     if (!selectedSkuId) {
       toast.error("Select an SKU first");
@@ -895,15 +979,18 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
       return;
     }
     try {
-      await confirm.mutateAsync({
-        rawInput,
-        partnerId,
-        npSkuId: selectedSkuId,
-        itemId,
-        reviewItemId: item.id,
-        userId,
-      });
-      toast.success("Mapping confirmed");
+      for (const target of targets) {
+        const info = targetInfo(target);
+        await confirm.mutateAsync({
+          rawInput: info.rawInput,
+          partnerId: info.partnerId,
+          npSkuId: selectedSkuId,
+          itemId: info.itemId,
+          reviewItemId: target.id,
+          userId,
+        });
+      }
+      toast.success(`Mapping confirmed${bulkSuffix}`);
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -916,18 +1003,22 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
       return;
     }
     try {
-      await reject.mutateAsync({
-        rawInput,
-        partnerId,
-        reviewItemId: item.id,
-        userId,
-      });
-      toast.success("Mapping rejected");
+      for (const target of targets) {
+        const info = targetInfo(target);
+        await reject.mutateAsync({
+          rawInput: info.rawInput,
+          partnerId: info.partnerId,
+          reviewItemId: target.id,
+          userId,
+        });
+      }
+      toast.success(`Mapping rejected${bulkSuffix}`);
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
+
 
   const confPct =
     confidence !== null
@@ -1099,7 +1190,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           ) : (
             <XCircle className="mr-2 h-3.5 w-3.5" />
           )}
-          Odbaci
+          Odbaci{targets.length > 1 ? ` ×${targets.length}` : ""}
         </Button>
         <Button
           className="bg-emerald-600 text-white hover:bg-emerald-700"
@@ -1111,7 +1202,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           ) : (
             <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
           )}
-          Potvrdi mapping
+          Potvrdi mapping{targets.length > 1 ? ` ×${targets.length}` : ""}
         </Button>
       </DialogFooter>
     </>
