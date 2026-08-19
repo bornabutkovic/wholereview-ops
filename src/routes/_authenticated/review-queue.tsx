@@ -1190,7 +1190,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           ) : (
             <XCircle className="mr-2 h-3.5 w-3.5" />
           )}
-          Odbaci
+          Odbaci{targets.length > 1 ? ` ×${targets.length}` : ""}
         </Button>
         <Button
           className="bg-emerald-600 text-white hover:bg-emerald-700"
