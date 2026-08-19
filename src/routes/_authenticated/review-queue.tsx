@@ -123,6 +123,15 @@ function rawInputKey(item: ReviewItem): string | null {
   return value ? value.toLowerCase() : null;
 }
 
+function senderKey(item: ReviewItem): string {
+  const payload =
+    item.payload && typeof item.payload === "object"
+      ? (item.payload as ProductMatchPayload & PartnerUnknownPayload)
+      : {};
+  const sender = payload.partner_id ?? payload.from_address ?? "";
+  return String(sender).trim().toLowerCase();
+}
+
 function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
   const groups: ReviewGroup[] = [];
   const index = new Map<string, ReviewGroup>();
@@ -133,7 +142,8 @@ function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
       groups.push({ key: item.id, label: item.description ?? "—", items: [item] });
       continue;
     }
-    const groupKey = `raw:${item.category}:${key}`;
+    const groupKey = `raw:${item.category}:${senderKey(item)}:${key}`;
+
     const existing = index.get(groupKey);
     if (existing) {
       existing.items.push(item);
