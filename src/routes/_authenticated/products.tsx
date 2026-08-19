@@ -42,6 +42,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CatalogBrowser } from "@/components/catalog-browser";
+
 
 export const Route = createFileRoute("/_authenticated/products")({
   component: ProductsPage,
@@ -213,7 +216,7 @@ function ProductsPage() {
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Products</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Product catalogue (SKU registry)
+            Puni katalog (np_catalog_reference) + SKU registar
           </p>
         </div>
         <Button size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
@@ -222,8 +225,28 @@ function ProductsPage() {
         </Button>
       </header>
 
-      <div className="flex-1 overflow-auto p-6 space-y-3">
+      <div className="flex-1 overflow-auto p-6">
+        <Tabs defaultValue="catalog" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="catalog">Katalog</TabsTrigger>
+            <TabsTrigger value="pending">Pending kod</TabsTrigger>
+            <TabsTrigger value="sku">SKU registar</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="catalog" className="mt-0">
+            <CatalogBrowser mode="CATALOG" />
+          </TabsContent>
+
+          <TabsContent value="pending" className="mt-0 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Zapisi bez finaliziranog materijal koda (is_pending_materijal_code = true).
+            </p>
+            <CatalogBrowser mode="PENDING" />
+          </TabsContent>
+
+          <TabsContent value="sku" className="mt-0 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
+
           <div className="relative max-w-sm flex-1 min-w-[240px]">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -338,7 +361,10 @@ function ProductsPage() {
             </TableBody>
           </Table>
         </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
 
       <ProductDetailSheet sku={selected} onClose={() => setSelected(null)} />
       <ProductEditSheet sku={editing} onClose={() => setEditing(null)} />
