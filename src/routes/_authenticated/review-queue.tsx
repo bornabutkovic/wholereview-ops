@@ -118,8 +118,9 @@ function rawInputKey(item: ReviewItem): string | null {
     item.payload && typeof item.payload === "object"
       ? (item.payload as ProductMatchPayload)
       : {};
-  const raw = payload.raw_input ?? payload.raw_product_ref ?? null;
-  const value = (raw ?? "").trim();
+  const raw =
+    payload.raw_input ?? payload.raw_product_ref ?? item.description ?? null;
+  const value = (raw ?? "").trim().replace(/\s+/g, " ");
   return value ? value.toLowerCase() : null;
 }
 
@@ -142,7 +143,8 @@ function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
       groups.push({ key: item.id, label: item.description ?? "—", items: [item] });
       continue;
     }
-    const groupKey = `raw:${item.category}:${senderKey(item)}:${key}`;
+    // group only rows that share category + sender + raw name + status
+    const groupKey = `raw:${item.category}:${item.status}:${senderKey(item)}:${key}`;
 
     const existing = index.get(groupKey);
     if (existing) {
@@ -164,6 +166,7 @@ function groupByRawInput(items: ReviewItem[]): ReviewGroup[] {
 
   return groups;
 }
+
 
 function ReviewQueuePage() {
   const { user } = useAuth();
