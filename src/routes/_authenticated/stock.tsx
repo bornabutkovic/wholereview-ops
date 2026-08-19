@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 
 import { supabase } from "@/lib/supabase";
 import { formatQty } from "@/lib/format";
+import { WarehouseReceiptUpload } from "@/components/warehouse-receipt-upload";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -205,6 +206,9 @@ function StockPage() {
               <TabsTrigger value="allocation" className="text-xs">
                 Allocation
               </TabsTrigger>
+              <TabsTrigger value="receipts" className="text-xs">
+                Primke
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -219,6 +223,11 @@ function StockPage() {
           <TabsContent value="allocation" className="flex-1 overflow-auto p-6 pt-4">
             <AllocationTab />
           </TabsContent>
+
+          <TabsContent value="receipts" className="flex-1 overflow-auto p-6 pt-4">
+            <WarehouseReceiptUpload />
+          </TabsContent>
+
 
         </Tabs>
       </div>
