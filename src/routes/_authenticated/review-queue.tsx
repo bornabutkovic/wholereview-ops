@@ -1202,7 +1202,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           ) : (
             <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
           )}
-          Potvrdi mapping
+          Potvrdi mapping{targets.length > 1 ? ` ×${targets.length}` : ""}
         </Button>
       </DialogFooter>
     </>
