@@ -185,6 +185,73 @@ export function RequestDetailSheet({
     })),
   });
 
+  // Wholesale cost basis per SKU: np_sku.materijal_code -> np_catalog_reference.wholesale_price_eur
+  const skuIds = itemList
+    .map((it) => it.np_sku_id)
+    .filter((v): v is string => !!v)
+    .sort();
+
+  const costs = useQuery({
+    queryKey: ["wholesale-cost", skuIds.join("|")],
+    enabled: skuIds.length > 0,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const client = supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            in: (c: string, v: unknown[]) => Promise<{ data: unknown; error: unknown }>;
+          };
+        };
+      };
+      const skuRes = await client
+        .from("np_sku")
+        .select("np_sku_id, materijal_code")
+        .in("np_sku_id", skuIds);
+      if (skuRes.error) throw skuRes.error;
+      const skuRows = (skuRes.data ?? []) as {
+        np_sku_id: string;
+        materijal_code: string | null;
+      }[];
+      const codes = Array.from(
+        new Set(skuRows.map((r) => r.materijal_code).filter((c): c is string => !!c)),
+      );
+      if (codes.length === 0) return {};
+
+      const refRes = await client
+        .from("np_catalog_reference")
+        .select("materijal_code, wholesale_price_eur")
+        .in("materijal_code", codes);
+      if (refRes.error) throw refRes.error;
+      const refRows = (refRes.data ?? []) as {
+        materijal_code: string | null;
+        wholesale_price_eur: number | string | null;
+      }[];
+      const byCode: Record<string, number> = {};
+      refRows.forEach((r) => {
+        if (!r.materijal_code || r.wholesale_price_eur == null) return;
+        const n = Number(r.wholesale_price_eur);
+        if (Number.isFinite(n)) byCode[r.materijal_code] = n;
+      });
+
+      const bySku: Record<string, number> = {};
+      skuRows.forEach((r) => {
+        if (r.materijal_code && byCode[r.materijal_code] != null) {
+          bySku[r.np_sku_id] = byCode[r.materijal_code];
+        }
+      });
+      return bySku;
+    },
+  });
+
+  const costMap = costs.data ?? {};
+
+  // Cost basis for margin math: wholesale price, falling back to historical max.
+  const costBasisFor = (it: RequestItem, s?: SuggestPriceResponse) => {
+    const wholesale = it.np_sku_id ? costMap[it.np_sku_id] : undefined;
+    if (wholesale != null && Number.isFinite(wholesale) && wholesale !== 0) return wholesale;
+    const max = s?.max_historical_price ?? null;
+    return max != null && max !== 0 ? max : null;
+  };
+
   // Local editable state per item
   const [priceState, setPriceState] = useState<Record<string, ItemPriceState>>({});
 
@@ -195,18 +262,28 @@ export function RequestDetailSheet({
       itemList.forEach((it, idx) => {
         const s = suggestionQueries[idx]?.data;
         if (s && next[it.id] === undefined) {
+          const pct = computeMarginPct(s.suggested_price ?? null, costBasisFor(it, s));
+          const snapped =
+            pct != null &&
+            MARGIN_OPTIONS.some((m) => Math.abs(m - pct) <= 1);
           next[it.id] = {
             margin: 11,
             yourPrice: toInputString(s.suggested_price),
             suggestedPrice: s.suggested_price ?? null,
-            impliedMargin: null,
+            impliedMargin: pct,
+            snapped: snapped || pct == null,
           };
         }
       });
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestionQueries.map((q) => q.dataUpdatedAt).join("|"), itemList.length]);
+  }, [
+    suggestionQueries.map((q) => q.dataUpdatedAt).join("|"),
+    itemList.length,
+    costs.dataUpdatedAt,
+  ]);
+
 
   // Reset state when sheet target changes
   useEffect(() => {
