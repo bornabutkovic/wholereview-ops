@@ -555,9 +555,23 @@ export function RequestDetailSheet({
                                 {loadingSuggestion ? (
                                   <span className="text-xs text-muted-foreground">…</span>
                                 ) : s?.suggested_price != null ? (
-                                  <Badge className="bg-blue-600 font-bold text-white tabular-nums hover:bg-blue-700">
-                                    {formatMoney(s.suggested_price)}
-                                  </Badge>
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge className="bg-blue-600 font-bold text-white tabular-nums hover:bg-blue-700">
+                                      {formatMoney(s.suggested_price)}
+                                    </Badge>
+                                    {(() => {
+                                      const pct = computeMarginPct(
+                                        s.suggested_price ?? null,
+                                        costBasisFor(it, s),
+                                      );
+                                      if (pct == null) return null;
+                                      return (
+                                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                                          {formatPercent(pct)}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
                                     No history
@@ -567,20 +581,14 @@ export function RequestDetailSheet({
                               <TableCell>
                                 <div className="flex items-center gap-1.5">
                                   <Select
-                                    value={
-                                      ps?.impliedMargin != null
-                                        ? ""
-                                        : String(ps?.margin ?? 11)
-                                    }
+                                    value={ps && !ps.snapped ? "" : String(ps?.margin ?? 11)}
                                     onValueChange={(v) =>
                                       updateMargin(it, Number(v) as Margin)
                                     }
                                   >
                                     <SelectTrigger className="h-8 w-[72px] text-xs">
                                       <SelectValue
-                                        placeholder={
-                                          ps?.impliedMargin != null ? "—" : undefined
-                                        }
+                                        placeholder={ps && !ps.snapped ? "—" : undefined}
                                       />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -591,7 +599,7 @@ export function RequestDetailSheet({
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  {ps?.impliedMargin != null && (
+                                  {ps?.impliedMargin != null && !ps.snapped && (
                                     <Badge
                                       variant="outline"
                                       className={`text-[10px] tabular-nums ${
@@ -603,6 +611,7 @@ export function RequestDetailSheet({
                                       Custom: {formatPercent(ps.impliedMargin)}
                                     </Badge>
                                   )}
+
                                 </div>
                               </TableCell>
                               <TableCell>
