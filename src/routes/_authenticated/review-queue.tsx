@@ -921,12 +921,14 @@ function extractEmail(text: string): string | null {
 
 type ProductMatchBodyProps = {
   item: ReviewItem;
+  siblings?: ReviewItem[];
   userId: string | null;
   onResolved: () => void;
 };
 
 function ProductMatchBody(props: ProductMatchBodyProps) {
   const { item, userId, onResolved } = props;
+  const targets = props.siblings?.length ? props.siblings : [item];
   const payload: ProductMatchPayload =
     item.payload && typeof item.payload === "object"
       ? (item.payload as ProductMatchPayload)
@@ -953,6 +955,20 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
     [skus.data, suggestedSkuId],
   );
 
+  const targetInfo = (target: ReviewItem) => {
+    const p: ProductMatchPayload =
+      target.payload && typeof target.payload === "object"
+        ? (target.payload as ProductMatchPayload)
+        : {};
+    return {
+      rawInput: p.raw_input ?? p.raw_product_ref ?? target.description ?? rawInput,
+      partnerId: p.partner_id ?? partnerId,
+      itemId: p.item_id ?? target.item_id ?? null,
+    };
+  };
+
+  const bulkSuffix = targets.length > 1 ? ` (${targets.length} pojava)` : "";
+
   const handleConfirm = async () => {
     if (!selectedSkuId) {
       toast.error("Select an SKU first");
@@ -963,15 +979,18 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
       return;
     }
     try {
-      await confirm.mutateAsync({
-        rawInput,
-        partnerId,
-        npSkuId: selectedSkuId,
-        itemId,
-        reviewItemId: item.id,
-        userId,
-      });
-      toast.success("Mapping confirmed");
+      for (const target of targets) {
+        const info = targetInfo(target);
+        await confirm.mutateAsync({
+          rawInput: info.rawInput,
+          partnerId: info.partnerId,
+          npSkuId: selectedSkuId,
+          itemId: info.itemId,
+          reviewItemId: target.id,
+          userId,
+        });
+      }
+      toast.success(`Mapping confirmed${bulkSuffix}`);
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -984,18 +1003,22 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
       return;
     }
     try {
-      await reject.mutateAsync({
-        rawInput,
-        partnerId,
-        reviewItemId: item.id,
-        userId,
-      });
-      toast.success("Mapping rejected");
+      for (const target of targets) {
+        const info = targetInfo(target);
+        await reject.mutateAsync({
+          rawInput: info.rawInput,
+          partnerId: info.partnerId,
+          reviewItemId: target.id,
+          userId,
+        });
+      }
+      toast.success(`Mapping rejected${bulkSuffix}`);
       onResolved();
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
+
 
   const confPct =
     confidence !== null
