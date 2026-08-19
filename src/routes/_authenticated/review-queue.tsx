@@ -690,12 +690,15 @@ function GenericBody(props: GenericBodyProps) {
 
 type PartnerUnknownBodyProps = {
   item: ReviewItem;
+  siblings?: ReviewItem[];
   userId: string | null;
   onResolved: () => void;
 };
 
 function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
   const { item, userId, onResolved } = props;
+  const targets = props.siblings?.length ? props.siblings : [item];
+
   const partners = usePartners({ buyersOnly: true });
   const assign = useAssignPartner();
   const [partnerId, setPartnerId] = useState<string | null>(null);
