@@ -315,7 +315,7 @@ function ReviewQueuePage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {item.status === "OPEN" ? (
-                          <Button size="sm" variant="outline" onClick={() => setActive(item)}>
+                          <Button size="sm" variant="outline" onClick={() => setActive([item])}>
                             Resolve
                           </Button>
                         ) : (
