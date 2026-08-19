@@ -205,6 +205,9 @@ function StockPage() {
               <TabsTrigger value="allocation" className="text-xs">
                 Allocation
               </TabsTrigger>
+              <TabsTrigger value="receipts" className="text-xs">
+                Primke
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -219,6 +222,11 @@ function StockPage() {
           <TabsContent value="allocation" className="flex-1 overflow-auto p-6 pt-4">
             <AllocationTab />
           </TabsContent>
+
+          <TabsContent value="receipts" className="flex-1 overflow-auto p-6 pt-4">
+            <WarehouseReceiptUpload />
+          </TabsContent>
+
 
         </Tabs>
       </div>
