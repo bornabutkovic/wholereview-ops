@@ -361,7 +361,10 @@ function ProductsPage() {
             </TableBody>
           </Table>
         </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
 
       <ProductDetailSheet sku={selected} onClose={() => setSelected(null)} />
       <ProductEditSheet sku={editing} onClose={() => setEditing(null)} />
