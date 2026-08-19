@@ -331,8 +331,8 @@ export function RequestDetailSheet({
   const updateMargin = (it: RequestItem, margin: Margin) => {
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
-    const max = s?.max_historical_price ?? null;
-    const recalculated = max != null ? Number((max * (1 + margin / 100)).toFixed(2)) : null;
+    const cost = costBasisFor(it, s);
+    const recalculated = cost != null ? Number((cost * (1 + margin / 100)).toFixed(2)) : null;
     setPriceState((prev) => ({
       ...prev,
       [it.id]: {
@@ -340,7 +340,8 @@ export function RequestDetailSheet({
         suggestedPrice: recalculated ?? prev[it.id]?.suggestedPrice ?? null,
         yourPrice:
           recalculated != null ? toInputString(recalculated) : (prev[it.id]?.yourPrice ?? ""),
-        impliedMargin: null,
+        impliedMargin: recalculated != null ? margin : (prev[it.id]?.impliedMargin ?? null),
+        snapped: true,
       },
     }));
   };
@@ -348,25 +349,27 @@ export function RequestDetailSheet({
   const updateYourPrice = (it: RequestItem, value: string) => {
     const idx = itemList.indexOf(it);
     const s = suggestionQueries[idx]?.data;
-    const max = s?.max_historical_price ?? null;
+    const cost = costBasisFor(it, s);
     const numeric = parseDecimalInput(value);
 
     setPriceState((prev) => {
       const previous = prev[it.id];
       let margin: Margin = previous?.margin ?? 11;
       let impliedMargin: number | null = null;
+      let snapped = true;
 
-      if (max != null && max !== 0 && !Number.isNaN(numeric)) {
+      const pct = Number.isNaN(numeric) ? null : computeMarginPct(numeric, cost);
+      if (pct != null) {
         // Always recalculate the percentage from the manually entered price.
-        const pct = Number((((numeric / max) - 1) * 100).toFixed(1));
+        impliedMargin = pct;
         const closest = MARGIN_OPTIONS.reduce((a, b) =>
-          Math.abs(b - pct) < Math.abs(a - pct) ? b : a
+          Math.abs(b - pct) < Math.abs(a - pct) ? b : a,
         );
         if (Math.abs(closest - pct) <= 1) {
           margin = closest;
-          impliedMargin = null;
+          snapped = true;
         } else {
-          impliedMargin = pct;
+          snapped = false;
         }
       }
 
@@ -377,10 +380,12 @@ export function RequestDetailSheet({
           suggestedPrice: previous?.suggestedPrice ?? null,
           yourPrice: value,
           impliedMargin,
+          snapped,
         },
       };
     });
   };
+
 
 
 
