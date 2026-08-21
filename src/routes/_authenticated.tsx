@@ -24,6 +24,7 @@ function AuthLayout() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
+        <GlobalRefresh />
         <AppSidebar />
         <div className="flex flex-1 flex-col">
           <div className="md:hidden border-b px-3 py-2">
