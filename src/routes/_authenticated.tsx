@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { GlobalRefresh } from "@/components/global-refresh";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated")({
