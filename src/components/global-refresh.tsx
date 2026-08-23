@@ -10,7 +10,7 @@ const COOLDOWN_MS = 15_000;
 const AUTO_FLAG = "np_wf1_refresh_triggered";
 
 const WEBHOOK_URL = "https://novopharma.app.n8n.cloud/webhook/wf1-manual-refresh";
-const REFRESH_KEY = "<tvoj_x-np-refresh-key_secret>";
+const REFRESH_KEY = "bc9dac77ebd55759e1c88c3bdb8cbefe";
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "nikad osvježeno";
