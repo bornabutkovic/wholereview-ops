@@ -2,7 +2,6 @@ import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { GlobalRefresh } from "@/components/global-refresh";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -24,7 +23,6 @@ function AuthLayout() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
-        <GlobalRefresh />
         <AppSidebar />
         <div className="flex flex-1 flex-col">
           <div className="md:hidden border-b px-3 py-2">
