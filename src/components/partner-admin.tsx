@@ -104,7 +104,7 @@ function describeError(error: {
   details?: string | null;
   hint?: string | null;
 }) {
-  const msg = String(error.message ?? "Nepoznata greška");
+  const msg = String(error.message ?? "Unknown error");
   const code = error.code ? ` (${error.code})` : "";
   if (error.code === "42501") {
     return `Baza je odbila upis: nema INSERT dozvole na tablici partner${code}. Potreban je GRANT INSERT / RLS policy.`;
@@ -150,7 +150,7 @@ export function PartnerEditDialog(props: {
   const save = useMutation({
     mutationFn: async () => {
       const trimmedName = name.trim();
-      if (!trimmedName) throw new Error("Naziv je obavezan");
+      if (!trimmedName) throw new Error("Name is required");
 
       const base: Record<string, unknown> = {
         name: trimmedName,
@@ -200,7 +200,7 @@ export function PartnerEditDialog(props: {
           }
           throw new Error(describeError(error));
         }
-        throw new Error("Nije moguće generirati slobodan partner_id");
+        throw new Error("Could not generate a free partner_id");
       }
 
       let codeDropped = false;
@@ -224,7 +224,7 @@ export function PartnerEditDialog(props: {
     },
 
     onSuccess: (id) => {
-      toast.success(isCreate ? `Partner ${id} dodan` : "Partner ažuriran");
+      toast.success(isCreate ? `Partner ${id} added` : "Partner updated");
       qc.invalidateQueries({ queryKey: ["partners-list"] });
       qc.invalidateQueries({ queryKey: ["partners"] });
       onClose();
@@ -245,7 +245,7 @@ export function PartnerEditDialog(props: {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm">
-            {isCreate ? "Novi partner" : "Uredi partnera"}
+            {isCreate ? "New partner" : "Edit partner"}
           </DialogTitle>
           {!isCreate ? (
             <DialogDescription className="font-mono text-xs">
@@ -263,7 +263,7 @@ export function PartnerEditDialog(props: {
         </DialogHeader>
 
         <div className="space-y-3">
-          <Field label="Naziv">
+          <Field label="Name">
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -279,7 +279,7 @@ export function PartnerEditDialog(props: {
             />
           </Field>
 
-          <Field label="Država">
+          <Field label="Country">
             <Input
               value={country}
               onChange={(e) => setCountry(e.target.value)}
@@ -336,7 +336,7 @@ export function PartnerEditDialog(props: {
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            Odustani
+            Cancel
           </Button>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
@@ -401,7 +401,7 @@ export function PartnerDeleteDialog(props: {
     <Dialog open={!!partner} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm">Obriši partnera</DialogTitle>
+          <DialogTitle className="text-sm">Delete partner</DialogTitle>
           <DialogDescription>{partner?.name}</DialogDescription>
         </DialogHeader>
 
@@ -410,7 +410,7 @@ export function PartnerDeleteDialog(props: {
         ) : blocked ? (
           <div className="space-y-2">
             <p className="text-sm text-destructive">
-              Partner ima povezane podatke, koristi Merge umjesto Delete.
+              Partner has linked data, use Merge instead of Delete.
             </p>
             <ul className="space-y-1 text-xs text-muted-foreground">
               {Object.entries(refs.data ?? {})
@@ -424,13 +424,13 @@ export function PartnerDeleteDialog(props: {
           </div>
         ) : (
           <p className="text-sm">
-            Nema povezanih podataka. Brisanje je nepovratno — potvrdi?
+            No linked data. Deletion is irreversible — confirm?
           </p>
         )}
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            Odustani
+            Cancel
           </Button>
           <Button
             variant="destructive"
@@ -513,9 +513,9 @@ export function PartnerMergeDialog(props: {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm">Spoji partnere</DialogTitle>
+          <DialogTitle className="text-sm">Merge partners</DialogTitle>
           <DialogDescription>
-            Odaberi partnera koji ostaje (survivor)
+            Select the partner to keep (survivor)
           </DialogDescription>
         </DialogHeader>
 
@@ -535,15 +535,15 @@ export function PartnerMergeDialog(props: {
 
         <p className="text-xs text-muted-foreground">
           {summary.isLoading
-            ? "Izračun ovisnosti…"
+            ? "Calculating dependencies…"
             : summary.data
-              ? `${summary.data.rows} redova će biti premješteno, ${summary.data.deleted} partnera će biti obrisano.`
+              ? `${summary.data.rows} rows will be moved, ${summary.data.deleted} partners will be deleted.`
               : "—"}
         </p>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onClose()}>
-            Odustani
+            Cancel
           </Button>
           <Button
             disabled={!survivor || losers.length === 0 || merge.isPending}

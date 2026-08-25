@@ -315,7 +315,7 @@ export function RequestDetailSheet({
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Narudžba potvrđena", {
+      toast.success("Order confirmed", {
         description: "Stavke idu u alokaciju za trenutni ciklus.",
       });
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
@@ -324,7 +324,7 @@ export function RequestDetailSheet({
     },
     onError: (e: unknown) =>
       toast.error("Potvrda nije uspjela", {
-        description: e instanceof Error ? e.message : "Nepoznata greška",
+        description: e instanceof Error ? e.message : "Unknown error",
       }),
   });
 
@@ -542,7 +542,7 @@ export function RequestDetailSheet({
                                     className="border-rose-200 bg-rose-50 text-[11px] text-rose-700"
                                   >
                                     <AlertTriangle className="mr-1 h-3 w-3" />
-                                    Količina nedostaje
+                                    Quantity missing
                                   </Badge>
                                 )}
                               </TableCell>
@@ -648,7 +648,7 @@ export function RequestDetailSheet({
                                                 {input}
                                               </TooltipTrigger>
                                               <TooltipContent>
-                                                Cijena ispod nabavne — provjeri!
+                                                Price below cost — check!
                                               </TooltipContent>
                                             </Tooltip>
                                           </TooltipProvider>
@@ -710,7 +710,7 @@ export function RequestDetailSheet({
                     className="gap-2"
                   >
                     <PackageCheck className="h-4 w-4" />
-                    Potvrdi / Alociraj
+                    Confirm / Allocate
                   </Button>
                 ) : (
                   <Button
@@ -745,15 +745,15 @@ export function RequestDetailSheet({
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Potvrdi narudžbu i pošalji u alokaciju</DialogTitle>
+            <DialogTitle>Confirm order and send to allocation</DialogTitle>
             <DialogDescription>
-              Narudžbenica {context?.title} ({context?.partnerName}) označit će se kao{" "}
-              CONFIRMED i njezine stavke ulaze u alokaciju trenutnog ciklusa.
+              Purchase order {context?.title} ({context?.partnerName}) will be marked as{" "}
+              CONFIRMED and its items enter the current cycle's allocation.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-              Odustani
+              Cancel
             </Button>
             <Button
               className="gap-2"
@@ -761,7 +761,7 @@ export function RequestDetailSheet({
               onClick={() => confirmAllocate.mutate()}
             >
               <PackageCheck className="h-4 w-4" />
-              {confirmAllocate.isPending ? "Potvrđujem…" : "Potvrdi / Alociraj"}
+              {confirmAllocate.isPending ? "Confirming…" : "Confirm / Allocate"}
             </Button>
           </div>
         </DialogContent>
