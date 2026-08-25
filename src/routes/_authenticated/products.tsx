@@ -193,6 +193,9 @@ function ProductsPage() {
   const [editing, setEditing] = useState<Sku | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
+  // Feature flag: pending kod tab is temporarily hidden but kept intact.
+  const SHOW_PENDING_TAB = false;
+
   const { data, isLoading, error } = useSkus();
 
   const filtered = useMemo(() => {
@@ -229,7 +232,9 @@ function ProductsPage() {
         <Tabs defaultValue="catalog" className="space-y-4">
           <TabsList>
             <TabsTrigger value="catalog">Katalog</TabsTrigger>
-            <TabsTrigger value="pending">Pending kod</TabsTrigger>
+            {SHOW_PENDING_TAB && (
+              <TabsTrigger value="pending">Pending kod</TabsTrigger>
+            )}
             <TabsTrigger value="sku">SKU registar</TabsTrigger>
           </TabsList>
 
@@ -237,12 +242,14 @@ function ProductsPage() {
             <CatalogBrowser mode="CATALOG" />
           </TabsContent>
 
-          <TabsContent value="pending" className="mt-0 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Zapisi bez finaliziranog materijal koda (is_pending_materijal_code = true).
-            </p>
-            <CatalogBrowser mode="PENDING" />
-          </TabsContent>
+          {SHOW_PENDING_TAB && (
+            <TabsContent value="pending" className="mt-0 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Zapisi bez finaliziranog materijal koda (is_pending_materijal_code = true).
+              </p>
+              <CatalogBrowser mode="PENDING" />
+            </TabsContent>
+          )}
 
           <TabsContent value="sku" className="mt-0 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
