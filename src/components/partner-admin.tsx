@@ -340,7 +340,7 @@ export function PartnerEditDialog(props: {
           </Button>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            Spremi
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -438,7 +438,7 @@ export function PartnerDeleteDialog(props: {
             onClick={() => del.mutate()}
           >
             {del.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            Obriši
+            Delete
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -550,7 +550,7 @@ export function PartnerMergeDialog(props: {
             onClick={() => merge.mutate()}
           >
             {merge.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            Spoji
+            Merge
           </Button>
         </DialogFooter>
       </DialogContent>

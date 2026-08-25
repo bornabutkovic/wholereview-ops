@@ -1166,7 +1166,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
 
       <div className="rounded-md border bg-muted/10 p-3">
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Kontekst
+          Context
         </p>
         {context.isLoading ? (
           <div className="space-y-2">
