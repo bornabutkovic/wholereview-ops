@@ -48,17 +48,17 @@ export const Route = createFileRoute("/_authenticated/inbox")({
   component: InboxPage,
   head: () => ({
     meta: [
-      { title: "Inbox — trijaža dolaznih mailova | Novo Pharma" },
+      { title: "Inbox — incoming email triage | Novo Pharma" },
       {
         name: "description",
         content:
-          "Trijažni prikaz dolaznih mailova koji zahtijevaju ručnu intervenciju: greške obrade, nepoznati pošiljatelji i zaglavljene obrade.",
+          "Triage view of incoming emails that need manual intervention: processing errors, unknown senders and stuck processing.",
       },
-      { property: "og:title", content: "Inbox — trijaža dolaznih mailova" },
+      { property: "og:title", content: "Inbox — incoming email triage" },
       {
         property: "og:description",
         content:
-          "Greške obrade, nepoznati pošiljatelji i zaglavljene obrade na jednom mjestu.",
+          "Processing errors, unknown senders and stuck processing in one place.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -183,7 +183,7 @@ function useDiscardEmail() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Mail je odbačen");
+      toast.success("Email dismissed");
       qc.invalidateQueries({ queryKey: ["inbox"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -211,8 +211,8 @@ function InboxPage() {
       <header className="border-b px-6 py-4">
         <h1 className="text-lg font-semibold tracking-tight">Inbox</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Mailovi koji zahtijevaju ručnu intervenciju — greške, nepoznati
-          pošiljatelji i zaglavljene obrade
+          Emails that need manual intervention — errors, unknown senders and
+          stuck processing
         </p>
       </header>
 
@@ -228,9 +228,9 @@ function InboxPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[150px]">Razlog</TableHead>
-                <TableHead className="w-[220px]">Pošiljatelj</TableHead>
+                <TableHead className="w-[220px]">Sender</TableHead>
                 <TableHead>Predmet</TableHead>
-                <TableHead className="w-[250px]">Greška</TableHead>
+                <TableHead className="w-[250px]">Error</TableHead>
                 <TableHead className="w-[150px]">Primljeno</TableHead>
                 <TableHead className="w-[230px] text-right">Akcija</TableHead>
               </TableRow>
@@ -259,7 +259,7 @@ function InboxPage() {
                     colSpan={6}
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
-                    Inbox je čist — nema stavki za trijažu
+                    Inbox is clear — nothing to triage
                   </TableCell>
                 </TableRow>
               ) : (
@@ -310,7 +310,7 @@ function InboxPage() {
                             className="h-7 text-xs"
                             onClick={() => setPartnerTarget(row)}
                           >
-                            Poveži partnera
+                            Link partner
                           </Button>
                         )}
                         {(row.reasons.includes("FAILED") ||
@@ -323,7 +323,7 @@ function InboxPage() {
                             onClick={() => retry.mutate(row.id)}
                           >
                             <RefreshCw className="mr-1 h-3 w-3" />
-                            Ponovi obradu
+                            Retry processing
                           </Button>
                         )}
                         {row.reasons.includes("FAILED") && (
@@ -335,7 +335,7 @@ function InboxPage() {
                             onClick={() => discard.mutate(row.id)}
                           >
                             <X className="mr-1 h-3 w-3" />
-                            Odbaci
+                            Dismiss
                           </Button>
                         )}
                       </div>
@@ -365,17 +365,17 @@ const REASON_META: Record<
   { label: string; className: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   FAILED: {
-    label: "Greška",
+    label: "Error",
     className: "border-red-200 bg-red-50 text-red-700",
     icon: AlertCircle,
   },
   PARTNER_UNKNOWN: {
-    label: "Nepoznat pošiljatelj",
+    label: "Unknown sender",
     className: "border-amber-200 bg-amber-50 text-amber-700",
     icon: HelpCircle,
   },
   STUCK: {
-    label: "Zaglavljeno",
+    label: "Stuck",
     className: "border-slate-200 bg-slate-100 text-slate-700",
     icon: Clock,
   },
@@ -470,7 +470,7 @@ function PartnerUnknownDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nepoznat pošiljatelj</DialogTitle>
+          <DialogTitle>Unknown sender</DialogTitle>
           <DialogDescription className="truncate">
             {row?.subject ?? "—"}
           </DialogDescription>
@@ -478,7 +478,7 @@ function PartnerUnknownDialog({
 
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">E-mail pošiljatelja</Label>
+            <Label className="text-xs">Sender email</Label>
             <Input
               value={currentEmail}
               onChange={(e) => setEmail(e.target.value)}
@@ -493,7 +493,7 @@ function PartnerUnknownDialog({
             <Select value={partnerId} onValueChange={setPartnerId}>
               <SelectTrigger>
                 <SelectValue
-                  placeholder={isLoading ? "Učitavanje…" : "Odaberi partnera"}
+                  placeholder={isLoading ? "Loading…" : "Select partner"}
                 />
               </SelectTrigger>
               <SelectContent>
@@ -509,13 +509,13 @@ function PartnerUnknownDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            Odustani
+            Cancel
           </Button>
           <Button
             disabled={!partnerId || link.isPending}
             onClick={() => link.mutate()}
           >
-            Poveži partnera
+            Link partner
           </Button>
         </DialogFooter>
       </DialogContent>

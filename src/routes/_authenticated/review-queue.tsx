@@ -388,7 +388,7 @@ function ReviewQueuePage() {
                               {group.label}
                             </span>
                             <Badge variant="secondary" className="shrink-0 text-[10px]">
-                              ×{group.items.length} pojava
+                              ×{group.items.length} occurrences
                             </Badge>
                           </div>
                         </TableCell>
@@ -544,13 +544,13 @@ function ResolveDialog(props: ResolveDialogProps) {
             {readOnly ? "Review item" : "Resolve review item"}
             {isBulk && (
               <Badge variant="secondary" className="ml-2 align-middle text-[10px]">
-                ×{siblings.length} pojava
+                ×{siblings.length} occurrences
               </Badge>
             )}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {item?.category.replace(/_/g, " ").toLowerCase()}
-            {isBulk ? " · rješava sve pojave odjednom" : ""}
+            {isBulk ? " · resolves all occurrences at once" : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -609,7 +609,7 @@ function GenericBody(props: GenericBodyProps) {
       }
     },
     onSuccess: (_d, status) => {
-      const suffix = targets.length > 1 ? ` (${targets.length} pojava)` : "";
+      const suffix = targets.length > 1 ? ` (${targets.length} occurrences)` : "";
       toast.success(
         (status === "RESOLVED" ? "Marked as resolved" : "Dismissed") + suffix,
       );
@@ -743,7 +743,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
     },
     onSuccess: () => {
       toast.success(
-        targets.length > 1 ? `Dismissed (${targets.length} pojava)` : "Dismissed",
+        targets.length > 1 ? `Dismissed (${targets.length} occurrences)` : "Dismissed",
       );
       onResolved();
     },
@@ -777,7 +777,7 @@ function PartnerUnknownBody(props: PartnerUnknownBodyProps) {
         sentToReview += result.sentToReview;
       }
       toast.success(
-        `Partner linked${targets.length > 1 ? ` (${targets.length} pojava)` : ""}. ${matched} products auto-matched, ${sentToReview} sent to review queue.`,
+        `Partner linked${targets.length > 1 ? ` (${targets.length} occurrences)` : ""}. ${matched} products auto-matched, ${sentToReview} sent to review queue.`,
       );
       onResolved();
     } catch (e) {
@@ -982,7 +982,7 @@ function SourceTextViewer({
       className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md border bg-background p-2 text-[11px] leading-relaxed text-foreground"
     >
       {!text ? (
-        "Nema izvornog teksta"
+        "No source text"
       ) : parts ? (
         <>
           {parts.before}
@@ -1039,7 +1039,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
     };
   };
 
-  const bulkSuffix = targets.length > 1 ? ` (${targets.length} pojava)` : "";
+  const bulkSuffix = targets.length > 1 ? ` (${targets.length} occurrences)` : "";
 
   const handleConfirm = async () => {
     if (!selectedSkuId) {
@@ -1128,10 +1128,10 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
         {/* Right: suggestion */}
         <div className="rounded-md border bg-muted/20 p-3">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Sistem predlaže
+            System suggests
           </p>
           {!suggestedSkuId ? (
-            <p className="text-sm text-muted-foreground">Nema prijedloga</p>
+            <p className="text-sm text-muted-foreground">No suggestions</p>
           ) : skus.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-3/4" />
@@ -1166,7 +1166,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
 
       <div className="rounded-md border bg-muted/10 p-3">
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Kontekst
+          Context
         </p>
         {context.isLoading ? (
           <div className="space-y-2">
@@ -1178,7 +1178,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div>
-                <p className="text-[11px] text-muted-foreground">Kupac</p>
+                <p className="text-[11px] text-muted-foreground">Buyer</p>
                 <p className="text-sm text-foreground">
                   {context.data?.buyerName ??
                     context.data?.buyerId ??
@@ -1186,7 +1186,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-muted-foreground">Tražena količina</p>
+                <p className="text-[11px] text-muted-foreground">Requested quantity</p>
                 {context.data?.qtyRequested !== null && context.data?.qtyRequested !== undefined ? (
                   <p className="text-sm text-foreground">
                     {`${formatQty(context.data.qtyRequested)}${context.data.qtyUnit ? ` ${context.data.qtyUnit}` : ""}`}
@@ -1197,7 +1197,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
                     className="mt-1 border-rose-200 bg-rose-50 text-[11px] text-rose-700"
                   >
                     <AlertTriangle className="mr-1 h-3 w-3" />
-                    Količina nedostaje
+                    Quantity missing
                   </Badge>
                 )}
               </div>
@@ -1212,7 +1212,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
 
             <div>
               <p className="text-[11px] text-muted-foreground">
-                Izvorni tekst maila
+                Email source text
                 {context.data?.emailSubject ? ` · ${context.data.emailSubject}` : ""}
               </p>
               <SourceTextViewer
@@ -1265,7 +1265,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           ) : (
             <XCircle className="mr-2 h-3.5 w-3.5" />
           )}
-          Odbaci{targets.length > 1 ? ` ×${targets.length}` : ""}
+          Dismiss{targets.length > 1 ? ` ×${targets.length}` : ""}
         </Button>
         <Button
           className="bg-emerald-600 text-white hover:bg-emerald-700"
@@ -1277,7 +1277,7 @@ function ProductMatchBody(props: ProductMatchBodyProps) {
           ) : (
             <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
           )}
-          Potvrdi mapping{targets.length > 1 ? ` ×${targets.length}` : ""}
+          Confirm mapping{targets.length > 1 ? ` ×${targets.length}` : ""}
         </Button>
       </DialogFooter>
     </>

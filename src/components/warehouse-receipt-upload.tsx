@@ -191,10 +191,10 @@ export function WarehouseReceiptUpload() {
       setResult(payload);
       setPhase("success");
       toast.success(
-        `Primka obrađena — ${formatQty(payload.items_written ?? 0)} stavki zapisano.`,
+        `Receipt processed — ${formatQty(payload.items_written ?? 0)} items recorded.`,
       );
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Nepoznata greška";
+      const msg = e instanceof Error ? e.message : "Unknown error";
       setError(msg);
       setPhase("error");
       toast.error(msg);
@@ -206,10 +206,10 @@ export function WarehouseReceiptUpload() {
   return (
     <div className="max-w-3xl space-y-4">
       <div>
-        <h2 className="text-sm font-semibold">Primka iz skladišta</h2>
+        <h2 className="text-sm font-semibold">Warehouse receipt</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Učitaj skenirani PDF ili fotografiju rukom ispunjene primke. Ako ne znaš
-          na koji PO se odnosi, ostavi „Nije poznato”.
+          Upload a scanned PDF or photo of the handwritten receipt. If you don't
+          know which PO it belongs to, leave “Unknown”.
         </p>
       </div>
 
@@ -252,11 +252,11 @@ export function WarehouseReceiptUpload() {
             disabled={busy}
             onClick={() => inputRef.current?.click()}
           >
-            Odaberi datoteku
+            Choose file
           </Button>
           {file ? (
             <Button size="sm" variant="ghost" disabled={busy} onClick={reset}>
-              Očisti
+              Clear
             </Button>
           ) : null}
         </div>
@@ -299,14 +299,14 @@ export function WarehouseReceiptUpload() {
             ? "Uploading…"
             : phase === "processing"
               ? "Processing…"
-              : "Učitaj i obradi"}
+              : "Upload and process"}
         </Button>
       </div>
 
       {phase === "processing" ? (
         <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Processing… dokument se parsira, ovo može potrajati do minute.
+          Processing… the document is being parsed, this can take up to a minute.
         </div>
       ) : null}
 
@@ -327,7 +327,7 @@ export function WarehouseReceiptUpload() {
             onClick={() => void run(storagePath)}
           >
             <RotateCcw className="mr-2 h-3.5 w-3.5" />
-            Pokušaj ponovno
+            Try again
           </Button>
         </div>
       ) : null}
@@ -338,11 +338,11 @@ export function WarehouseReceiptUpload() {
             <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
             <div className="flex-1">
               <p className="text-sm font-medium text-emerald-800">
-                Primka obrađena
+                Receipt processed
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {formatQty(result.items_written ?? result.items?.length ?? 0)}{" "}
-                stavki zapisano
+                items recorded
                 {result.receipt_id ? (
                   <>
                     {" · "}
@@ -350,7 +350,7 @@ export function WarehouseReceiptUpload() {
                   </>
                 ) : null}
                 {requestId === "NONE"
-                  ? " · bez usporedbe s očekivanom količinom (PO nije odabran)"
+                  ? " · no comparison against expected quantity (no PO selected)"
                   : null}
               </p>
             </div>
@@ -368,7 +368,7 @@ export function WarehouseReceiptUpload() {
                     <TableHead className="w-[120px] text-xs">Lot</TableHead>
                     <TableHead className="w-[110px] text-xs">Rok</TableHead>
                     <TableHead className="w-[100px] text-right text-xs">
-                      Količina
+                      Quantity
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -405,12 +405,12 @@ export function WarehouseReceiptUpload() {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Webhook nije vratio popis stavki.
+              The webhook did not return an item list.
             </p>
           )}
 
           <Button size="sm" variant="outline" onClick={reset}>
-            Učitaj novu primku
+            Upload another receipt
           </Button>
         </div>
       ) : null}

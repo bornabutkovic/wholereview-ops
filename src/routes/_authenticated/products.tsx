@@ -219,7 +219,7 @@ function ProductsPage() {
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Products</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Puni katalog (np_catalog_reference) + SKU registar
+            Full catalog (np_catalog_reference) + SKU registry
           </p>
         </div>
         <Button size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
@@ -231,11 +231,11 @@ function ProductsPage() {
       <div className="flex-1 overflow-auto p-6">
         <Tabs defaultValue="catalog" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="catalog">Katalog</TabsTrigger>
+            <TabsTrigger value="catalog">Catalog</TabsTrigger>
             {SHOW_PENDING_TAB && (
               <TabsTrigger value="pending">Pending kod</TabsTrigger>
             )}
-            <TabsTrigger value="sku">SKU registar</TabsTrigger>
+            <TabsTrigger value="sku">SKU Registry</TabsTrigger>
           </TabsList>
 
           <TabsContent value="catalog" className="mt-0">

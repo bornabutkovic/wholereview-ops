@@ -207,7 +207,7 @@ function StockPage() {
                 Allocation
               </TabsTrigger>
               <TabsTrigger value="receipts" className="text-xs">
-                Primke
+                Receipts
               </TabsTrigger>
             </TabsList>
           </div>
@@ -525,7 +525,7 @@ function AllocationTab() {
       if (error) throw error as Error;
     },
     onSuccess: () => {
-      toast.success("Skladišno stanje potvrđeno");
+      toast.success("Warehouse stock confirmed");
       queryClient.invalidateQueries({ queryKey: ["stock-confirmed", cycleRef] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -554,7 +554,7 @@ function AllocationTab() {
     runAllocation.mutate(false, {
       onSuccess: (res) => {
         const n = res.confirmed_count ?? res.allocations?.length ?? 0;
-        toast.success(`Ciklus zatvoren. ${n} alokacija potvrđeno.`);
+        toast.success(`Cycle closed. ${n} allocations confirmed.`);
         setPreview(null);
         queryClient.invalidateQueries({ queryKey: ["open-cycle"] });
       },
@@ -614,7 +614,7 @@ function AllocationTab() {
       {cycleRef && !allConfirmed && (
         <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <AlertTriangle className="h-4 w-4" />
-          Potvrdite skladišno stanje prije pokretanja alokacije
+          Confirm warehouse stock before running allocation
           {stockConfirmed.data && (
             <span className="ml-auto font-mono">
               {stockConfirmed.data.total - stockConfirmed.data.unconfirmed}/
