@@ -1296,7 +1296,7 @@ function SkuCombobox(props: SkuComboboxProps) {
   const [open, setOpen] = useState(false);
   const selected = skus.find((s) => s.np_sku_id === value) ?? null;
   const label = (s: NpSkuDetails) =>
-    s.brand ? `${s.np_sku_id} — ${s.brand}` : s.np_sku_id;
+    `${s.brand ?? s.inn ?? "Unknown product"}${s.pack_description ? ` — ${s.pack_description}` : ""}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
