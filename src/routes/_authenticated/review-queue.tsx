@@ -1296,7 +1296,7 @@ function SkuCombobox(props: SkuComboboxProps) {
   const [open, setOpen] = useState(false);
   const selected = skus.find((s) => s.np_sku_id === value) ?? null;
   const label = (s: NpSkuDetails) =>
-    s.brand ? `${s.np_sku_id} — ${s.brand}` : s.np_sku_id;
+    `${s.brand ?? s.inn ?? "Unknown product"}${s.pack_description ? ` — ${s.pack_description}` : ""}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -1341,12 +1341,12 @@ function SkuCombobox(props: SkuComboboxProps) {
                       )}
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm">{label(s)}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">
-                        {s.np_sku_id}
-                        {s.inn ? ` · ${s.inn}` : ""}
-                        {s.eu_approval_no ? ` · EU: ${s.eu_approval_no}` : ""}
-                        {s.hr_approval_no ? ` · HR: ${s.hr_approval_no}` : ""}
+                      <div className="truncate text-sm font-medium">{label(s)}</div>
+                      <div className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+                        <Badge variant="outline" className="font-mono text-[10px] px-1 py-0">{s.np_sku_id}</Badge>
+                        {s.inn ? `· ${s.inn}` : ""}
+                        {s.eu_approval_no ? `· EU: ${s.eu_approval_no}` : ""}
+                        {s.hr_approval_no ? `· HR: ${s.hr_approval_no}` : ""}
                       </div>
                     </div>
                   </CommandItem>

@@ -283,8 +283,8 @@ export function CatalogBrowser({ mode }: { mode: CatalogMode }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[130px]">Materijal kod</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead className="w-[130px]">Materijal kod</TableHead>
               <TableHead>INN</TableHead>
               <TableHead>Manufacturer</TableHead>
               <TableHead className="w-[100px]">ATC</TableHead>
@@ -320,8 +320,8 @@ export function CatalogBrowser({ mode }: { mode: CatalogMode }) {
             ) : (
               rows.map((r) => (
                 <TableRow key={r.materijal_code}>
-                  <TableCell className="font-mono text-xs">{r.materijal_code}</TableCell>
                   <TableCell className="font-medium">{r.hzzo_brand_name ?? "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{r.materijal_code}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{r.inn ?? "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {r.manufacturer_name ?? "—"}
