@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { AlertCircle, Clock, RefreshCw, HelpCircle, X } from "lucide-react";
@@ -200,11 +200,6 @@ function InboxPage() {
   const discard = useDiscardEmail();
   const [partnerTarget, setPartnerTarget] = useState<InboxRow | null>(null);
 
-  const counts = useMemo(() => {
-    const c = { FAILED: 0, PARTNER_UNKNOWN: 0, STUCK: 0 };
-    for (const r of data ?? []) for (const reason of r.reasons) c[reason] += 1;
-    return c;
-  }, [data]);
 
   return (
     <div className="flex h-full flex-col overflow-auto">
@@ -217,11 +212,6 @@ function InboxPage() {
       </header>
 
       <div className="flex-1 space-y-4 p-6">
-        <div className="flex flex-wrap gap-2">
-          <ReasonBadge reason="FAILED" count={counts.FAILED} />
-          <ReasonBadge reason="PARTNER_UNKNOWN" count={counts.PARTNER_UNKNOWN} />
-          <ReasonBadge reason="STUCK" count={counts.STUCK} />
-        </div>
 
         <div className="rounded-md border">
           <Table>
