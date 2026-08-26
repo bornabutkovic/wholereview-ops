@@ -118,10 +118,9 @@ function useSkus() {
         .select(
           "np_sku_id, pack_description, origin_country, gtin_ean, status, hr_approval_no, eu_approval_no, np_product:np_product_id(brand, inn)",
         )
-        .order("np_sku_id", { ascending: true })
         .limit(5000);
       if (error) throw error;
-      return ((data ?? []) as SkuRow[]).map((r) => {
+      const rows = ((data ?? []) as SkuRow[]).map((r) => {
         const p = Array.isArray(r.np_product) ? r.np_product[0] : r.np_product;
         return {
           np_sku_id: r.np_sku_id,
@@ -134,6 +133,11 @@ function useSkus() {
           brand: p?.brand ?? null,
           inn: p?.inn ?? null,
         };
+      });
+      return rows.sort((a, b) => {
+        const aKey = (a.brand ?? a.inn ?? a.np_sku_id).toLowerCase();
+        const bKey = (b.brand ?? b.inn ?? b.np_sku_id).toLowerCase();
+        return aKey.localeCompare(bKey, "hr");
       });
     },
   });
@@ -288,10 +292,10 @@ function ProductsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Product Name</TableHead>
                 <TableHead className="w-[140px]">SKU ID</TableHead>
                 <TableHead className="w-[120px]">EU No.</TableHead>
                 <TableHead className="w-[120px]">HR No.</TableHead>
-                <TableHead>Product Name</TableHead>
                 <TableHead>Pack</TableHead>
                 <TableHead className="w-[120px]">Origin</TableHead>
                 <TableHead className="w-[160px]">EAN</TableHead>
@@ -327,6 +331,7 @@ function ProductsPage() {
                     className="cursor-pointer"
                     onClick={() => setSelected(s)}
                   >
+                    <TableCell className="font-medium">{productName(s)}</TableCell>
                     <TableCell className="font-mono text-xs">{s.np_sku_id}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {s.eu_approval_no ?? "—"}
@@ -334,7 +339,6 @@ function ProductsPage() {
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {s.hr_approval_no ?? "—"}
                     </TableCell>
-                    <TableCell className="font-medium">{productName(s)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {s.pack_description ?? "—"}
                     </TableCell>
