@@ -200,11 +200,6 @@ function InboxPage() {
   const discard = useDiscardEmail();
   const [partnerTarget, setPartnerTarget] = useState<InboxRow | null>(null);
 
-  const counts = useMemo(() => {
-    const c = { FAILED: 0, PARTNER_UNKNOWN: 0, STUCK: 0 };
-    for (const r of data ?? []) for (const reason of r.reasons) c[reason] += 1;
-    return c;
-  }, [data]);
 
   return (
     <div className="flex h-full flex-col overflow-auto">
