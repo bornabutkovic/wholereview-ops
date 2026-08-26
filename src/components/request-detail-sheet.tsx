@@ -618,43 +618,36 @@ export function RequestDetailSheet({
                                 {(() => {
                                   const belowCost =
                                     ps?.impliedMargin != null && ps.impliedMargin < 0;
-                                  const input = (
-                                    <Input
-                                      type="text"
-                                      inputMode="decimal"
-                                      className={`h-8 w-[100px] text-xs tabular-nums ${
-                                        belowCost
-                                          ? "border-destructive focus-visible:ring-destructive"
-                                          : ""
-                                      }`}
-                                      value={ps?.yourPrice ?? ""}
-                                      onChange={(e) => updateYourPrice(it, e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.currentTarget.blur();
-                                          persistOverride(it);
-                                        }
-                                      }}
-                                      onBlur={() => persistOverride(it)}
-                                    />
-                                  );
                                   return (
                                     <div className="flex flex-col gap-0.5">
                                       <div className="flex items-center gap-1">
-                                        {belowCost ? (
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                {input}
-                                              </TooltipTrigger>
-                                              <TooltipContent>
-                                                Price below cost — check!
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        ) : (
-                                          input
-                                        )}
+                                        <TooltipProvider>
+                                          <Tooltip open={belowCost}>
+                                            <TooltipTrigger asChild>
+                                              <Input
+                                                type="text"
+                                                inputMode="decimal"
+                                                className={`h-8 w-[100px] text-xs tabular-nums ${
+                                                  belowCost
+                                                    ? "border-destructive focus-visible:ring-destructive"
+                                                    : ""
+                                                }`}
+                                                value={ps?.yourPrice ?? ""}
+                                                onChange={(e) => updateYourPrice(it, e.target.value)}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") {
+                                                    e.currentTarget.blur();
+                                                    persistOverride(it);
+                                                  }
+                                                }}
+                                                onBlur={() => persistOverride(it)}
+                                              />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              Price below cost — check!
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
                                         <span className="text-[11px] text-muted-foreground">
                                           EUR
                                         </span>
