@@ -33,7 +33,7 @@ export function useNpSkuList() {
         .select("np_sku_id, pack_description, eu_approval_no, hr_approval_no, np_product:np_product_id(brand, inn)")
         .limit(2000);
       if (error) throw error;
-      const rows = ((data ?? []) as SkuRow[]).map(normalizeSku);
+      const rows = (data ?? []).map(normalizeSku);
       return rows.sort((a, b) => {
         const aKey = (a.brand ?? a.inn ?? a.np_sku_id).toLowerCase();
         const bKey = (b.brand ?? b.inn ?? b.np_sku_id).toLowerCase();
