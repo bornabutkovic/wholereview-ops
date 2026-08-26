@@ -217,11 +217,6 @@ function InboxPage() {
       </header>
 
       <div className="flex-1 space-y-4 p-6">
-        <div className="flex flex-wrap gap-2">
-          <ReasonBadge reason="FAILED" count={counts.FAILED} />
-          <ReasonBadge reason="PARTNER_UNKNOWN" count={counts.PARTNER_UNKNOWN} />
-          <ReasonBadge reason="STUCK" count={counts.STUCK} />
-        </div>
 
         <div className="rounded-md border">
           <Table>
