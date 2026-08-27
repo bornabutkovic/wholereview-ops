@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { formatQty } from "@/lib/format";
 import { WarehouseReceiptUpload } from "@/components/warehouse-receipt-upload";
+import { SupplierOrderDialog } from "@/components/supplier-order-dialog";
+
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -513,6 +515,26 @@ function AllocationTab() {
   const cycle = cycleQuery.data;
   const cycleRef = cycle?.cycle_ref ?? null;
 
+  // Latest cycle (any status) — drives the supplier order export for CLOSING/CLOSED
+  const latestCycleQuery = useQuery({
+    queryKey: ["latest-cycle"],
+    queryFn: async (): Promise<CycleRow | null> => {
+      const { data, error } = await (supabase as any)
+        .from("cycles")
+        .select("cycle_ref, status")
+        .order("cycle_ref", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error as Error;
+      return (data ?? null) as CycleRow | null;
+    },
+  });
+  const latestCycle = latestCycleQuery.data;
+  const showSupplierOrder =
+    !!latestCycle?.cycle_ref &&
+    ["CLOSING", "CLOSED"].includes((latestCycle.status ?? "").toUpperCase());
+
+
   const stockConfirmed = useQuery({
     queryKey: ["stock-confirmed", cycleRef],
     enabled: !!cycleRef,
@@ -622,8 +644,12 @@ function AllocationTab() {
           )}
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
+          {showSupplierOrder && latestCycle?.cycle_ref && (
+            <SupplierOrderDialog cycleRef={latestCycle.cycle_ref} />
+          )}
           <Button
             variant="outline"
+
             size="sm"
             disabled={!cycleRef || confirmWarehouse.isPending || allConfirmed}
             onClick={() => confirmWarehouse.mutate()}
