@@ -179,6 +179,39 @@ function useBatches() {
   });
 }
 
+function useSkuNameMap() {
+  return useQuery({
+    queryKey: ["sku-name-map"],
+    queryFn: async (): Promise<Record<string, string>> => {
+      const { data, error } = await supabase
+        .from("np_sku")
+        .select("np_sku_id, np_product:np_product_id(brand, inn)")
+        .limit(20000);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((row: unknown) => {
+        const r = row as {
+          np_sku_id: string;
+          np_product:
+            | { brand: string | null; inn: string | null }
+            | { brand: string | null; inn: string | null }[]
+            | null;
+        };
+        const prod = r.np_product
+          ? Array.isArray(r.np_product)
+            ? r.np_product[0]
+            : r.np_product
+          : null;
+        const name =
+          [prod?.brand, prod?.inn ? `(${prod.inn})` : null].filter(Boolean).join(" ") ||
+          r.np_sku_id;
+        map[r.np_sku_id] = name;
+      });
+      return map;
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -453,6 +486,8 @@ const ALLOC_STATUS_STYLES: Record<string, string> = {
 function AllocationTab() {
   const queryClient = useQueryClient();
   const [preview, setPreview] = useState<AllocationPreviewRow[] | null>(null);
+  const { data: skuNameMap } = useSkuNameMap();
+  const skuName = (id: string | null) => (id && skuNameMap?.[id]) || "—";
 
   const cycleQuery = useQuery({
     queryKey: ["open-cycle"],
@@ -629,6 +664,7 @@ function AllocationTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Product</TableHead>
                 <TableHead className="w-[140px]">SKU</TableHead>
                 <TableHead>Buyer</TableHead>
                 <TableHead className="text-right">Qty Requested</TableHead>
@@ -640,7 +676,7 @@ function AllocationTab() {
             <TableBody>
               {preview.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-xs text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-xs text-muted-foreground">
                     No allocations
                   </TableCell>
                 </TableRow>
@@ -654,7 +690,12 @@ function AllocationTab() {
                       : null);
                   return (
                     <TableRow key={`${r.np_sku_id}-${r.partner_id}-${i}`} className="text-sm">
-                      <TableCell className="font-mono text-xs">{r.np_sku_id ?? "—"}</TableCell>
+                      <TableCell className="font-medium">
+                        {skuName(r.np_sku_id)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {r.np_sku_id ?? "—"}
+                      </TableCell>
                       <TableCell>{r.partner_name ?? r.partner_id ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {r.qty_requested ?? "—"}
