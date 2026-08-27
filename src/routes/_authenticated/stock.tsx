@@ -642,7 +642,10 @@ function AllocationTab() {
           )}
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button
+          {showSupplierOrder && latestCycle?.cycle_ref && (
+            <SupplierOrderDialog cycleRef={latestCycle.cycle_ref} />
+          )}
+
             variant="outline"
             size="sm"
             disabled={!cycleRef || confirmWarehouse.isPending || allConfirmed}
