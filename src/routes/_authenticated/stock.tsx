@@ -179,6 +179,39 @@ function useBatches() {
   });
 }
 
+function useSkuNameMap() {
+  return useQuery({
+    queryKey: ["sku-name-map"],
+    queryFn: async (): Promise<Record<string, string>> => {
+      const { data, error } = await supabase
+        .from("np_sku")
+        .select("np_sku_id, np_product:np_product_id(brand, inn)")
+        .limit(20000);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((row: unknown) => {
+        const r = row as {
+          np_sku_id: string;
+          np_product:
+            | { brand: string | null; inn: string | null }
+            | { brand: string | null; inn: string | null }[]
+            | null;
+        };
+        const prod = r.np_product
+          ? Array.isArray(r.np_product)
+            ? r.np_product[0]
+            : r.np_product
+          : null;
+        const name =
+          [prod?.brand, prod?.inn ? `(${prod.inn})` : null].filter(Boolean).join(" ") ||
+          r.np_sku_id;
+        map[r.np_sku_id] = name;
+      });
+      return map;
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
