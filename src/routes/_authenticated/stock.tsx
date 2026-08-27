@@ -662,6 +662,7 @@ function AllocationTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Product</TableHead>
                 <TableHead className="w-[140px]">SKU</TableHead>
                 <TableHead>Buyer</TableHead>
                 <TableHead className="text-right">Qty Requested</TableHead>
