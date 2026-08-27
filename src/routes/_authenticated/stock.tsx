@@ -513,6 +513,26 @@ function AllocationTab() {
   const cycle = cycleQuery.data;
   const cycleRef = cycle?.cycle_ref ?? null;
 
+  // Latest cycle (any status) — drives the supplier order export for CLOSING/CLOSED
+  const latestCycleQuery = useQuery({
+    queryKey: ["latest-cycle"],
+    queryFn: async (): Promise<CycleRow | null> => {
+      const { data, error } = await (supabase as any)
+        .from("cycles")
+        .select("cycle_ref, status")
+        .order("cycle_ref", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error as Error;
+      return (data ?? null) as CycleRow | null;
+    },
+  });
+  const latestCycle = latestCycleQuery.data;
+  const showSupplierOrder =
+    !!latestCycle?.cycle_ref &&
+    ["CLOSING", "CLOSED"].includes((latestCycle.status ?? "").toUpperCase());
+
+
   const stockConfirmed = useQuery({
     queryKey: ["stock-confirmed", cycleRef],
     enabled: !!cycleRef,
