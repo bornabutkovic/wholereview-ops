@@ -486,6 +486,8 @@ const ALLOC_STATUS_STYLES: Record<string, string> = {
 function AllocationTab() {
   const queryClient = useQueryClient();
   const [preview, setPreview] = useState<AllocationPreviewRow[] | null>(null);
+  const { data: skuNameMap } = useSkuNameMap();
+  const skuName = (id: string | null) => (id && skuNameMap?.[id]) || "—";
 
   const cycleQuery = useQuery({
     queryKey: ["open-cycle"],
