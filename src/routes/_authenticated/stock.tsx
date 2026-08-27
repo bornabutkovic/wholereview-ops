@@ -645,8 +645,9 @@ function AllocationTab() {
           {showSupplierOrder && latestCycle?.cycle_ref && (
             <SupplierOrderDialog cycleRef={latestCycle.cycle_ref} />
           )}
-
+          <Button
             variant="outline"
+
             size="sm"
             disabled={!cycleRef || confirmWarehouse.isPending || allConfirmed}
             onClick={() => confirmWarehouse.mutate()}
