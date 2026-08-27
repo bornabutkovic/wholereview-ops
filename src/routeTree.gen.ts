@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSuppliersRouteImport } from './routes/_authenticated/suppliers'
+import { Route as AuthenticatedSupplierOffersRouteImport } from './routes/_authenticated/supplier-offers'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
 import { Route as AuthenticatedReviewQueueRouteImport } from './routes/_authenticated/review-queue'
 import { Route as AuthenticatedPurchaseOrdersRouteImport } from './routes/_authenticated/purchase-orders'
@@ -42,6 +43,12 @@ const AuthenticatedSuppliersRoute = AuthenticatedSuppliersRouteImport.update({
   path: '/suppliers',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSupplierOffersRoute =
+  AuthenticatedSupplierOffersRouteImport.update({
+    id: '/supplier-offers',
+    path: '/supplier-offers',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedStockRoute = AuthenticatedStockRouteImport.update({
   id: '/stock',
   path: '/stock',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
   '/review-queue': typeof AuthenticatedReviewQueueRoute
   '/stock': typeof AuthenticatedStockRoute
+  '/supplier-offers': typeof AuthenticatedSupplierOffersRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
 }
 export interface FileRoutesByTo {
@@ -115,6 +123,7 @@ export interface FileRoutesByTo {
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
   '/review-queue': typeof AuthenticatedReviewQueueRoute
   '/stock': typeof AuthenticatedStockRoute
+  '/supplier-offers': typeof AuthenticatedSupplierOffersRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
   '/': typeof AuthenticatedIndexRoute
 }
@@ -131,6 +140,7 @@ export interface FileRoutesById {
   '/_authenticated/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
   '/_authenticated/review-queue': typeof AuthenticatedReviewQueueRoute
   '/_authenticated/stock': typeof AuthenticatedStockRoute
+  '/_authenticated/supplier-offers': typeof AuthenticatedSupplierOffersRoute
   '/_authenticated/suppliers': typeof AuthenticatedSuppliersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/purchase-orders'
     | '/review-queue'
     | '/stock'
+    | '/supplier-offers'
     | '/suppliers'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/purchase-orders'
     | '/review-queue'
     | '/stock'
+    | '/supplier-offers'
     | '/suppliers'
     | '/'
   id:
@@ -176,6 +188,7 @@ export interface FileRouteTypes {
     | '/_authenticated/purchase-orders'
     | '/_authenticated/review-queue'
     | '/_authenticated/stock'
+    | '/_authenticated/supplier-offers'
     | '/_authenticated/suppliers'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/suppliers'
       fullPath: '/suppliers'
       preLoaderRoute: typeof AuthenticatedSuppliersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/supplier-offers': {
+      id: '/_authenticated/supplier-offers'
+      path: '/supplier-offers'
+      fullPath: '/supplier-offers'
+      preLoaderRoute: typeof AuthenticatedSupplierOffersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/stock': {
@@ -291,6 +311,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPurchaseOrdersRoute: typeof AuthenticatedPurchaseOrdersRoute
   AuthenticatedReviewQueueRoute: typeof AuthenticatedReviewQueueRoute
   AuthenticatedStockRoute: typeof AuthenticatedStockRoute
+  AuthenticatedSupplierOffersRoute: typeof AuthenticatedSupplierOffersRoute
   AuthenticatedSuppliersRoute: typeof AuthenticatedSuppliersRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
@@ -305,6 +326,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPurchaseOrdersRoute: AuthenticatedPurchaseOrdersRoute,
   AuthenticatedReviewQueueRoute: AuthenticatedReviewQueueRoute,
   AuthenticatedStockRoute: AuthenticatedStockRoute,
+  AuthenticatedSupplierOffersRoute: AuthenticatedSupplierOffersRoute,
   AuthenticatedSuppliersRoute: AuthenticatedSuppliersRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }

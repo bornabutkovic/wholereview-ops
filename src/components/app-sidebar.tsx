@@ -38,6 +38,7 @@ const items = [
   { title: "Enquiries", url: "/enquiries", icon: MessageSquare },
   { title: "Review Queue", url: "/review-queue", icon: ListChecks },
   { title: "Suppliers", url: "/suppliers", icon: Truck },
+  { title: "Supplier Offers", url: "/supplier-offers", icon: PackageCheck },
   { title: "Partners", url: "/partners", icon: Users },
   { title: "Products", url: "/products", icon: Boxes },
 
