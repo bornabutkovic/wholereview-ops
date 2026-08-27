@@ -674,7 +674,7 @@ function AllocationTab() {
             <TableBody>
               {preview.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-xs text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-xs text-muted-foreground">
                     No allocations
                   </TableCell>
                 </TableRow>
@@ -688,7 +688,12 @@ function AllocationTab() {
                       : null);
                   return (
                     <TableRow key={`${r.np_sku_id}-${r.partner_id}-${i}`} className="text-sm">
-                      <TableCell className="font-mono text-xs">{r.np_sku_id ?? "—"}</TableCell>
+                      <TableCell className="font-medium">
+                        {skuName(r.np_sku_id)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {r.np_sku_id ?? "—"}
+                      </TableCell>
                       <TableCell>{r.partner_name ?? r.partner_id ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {r.qty_requested ?? "—"}
