@@ -275,11 +275,15 @@ function useActiveOverrides(npSkuId: string | null) {
           valid_from: str(r, "valid_from"),
           valid_to: str(r, "valid_to"),
         }))
-        // Active = valid_from <= today AND (valid_to is null OR valid_to >= today)
-        .filter(
-          (r) =>
-            (!r.valid_from || r.valid_from <= today) && (!r.valid_to || r.valid_to >= today),
-        )
+        // Active = valid_from <= today AND (valid_to is null OR valid_to >= today).
+        // valid_from/valid_to may be timestamps, so compare date parts only —
+        // a raw string compare of "2026-08-28T09:00:00Z" <= "2026-08-28" is false
+        // and would silently hide an override created today.
+        .filter((r) => {
+          const from = (r.valid_from ?? "").slice(0, 10);
+          const to = (r.valid_to ?? "").slice(0, 10);
+          return (!from || from <= today) && (!to || to >= today);
+        })
         .sort((a, b) => (b.valid_from ?? "").localeCompare(a.valid_from ?? ""));
     },
   });
