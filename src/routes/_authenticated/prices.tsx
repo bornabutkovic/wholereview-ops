@@ -1,6 +1,800 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ComingSoon } from "@/components/coming-soon";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { AlertCircle, AlertTriangle, ChevronDown, ChevronRight, Loader2, Search, Tag } from "lucide-react";
+
+import { supabase } from "@/lib/supabase";
+import type { NpSkuDetails, Partner } from "@/lib/supabase";
+import { useNpSkuList, usePartners } from "@/lib/product-mapping";
+import { formatMoney, formatNumber, formatPercent, parseDecimalInput, toInputString } from "@/lib/format";
+import { SkuCombobox } from "@/components/sku-combobox";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_authenticated/prices")({
-  component: () => <ComingSoon title="Prices" />,
+  component: PricesPage,
+  head: () => ({
+    meta: [
+      { title: "SKU Pricing — Novo Pharma Ops" },
+      {
+        name: "description",
+        content:
+          "Manage buyer prices, active overrides and price history for a single SKU.",
+      },
+      { property: "og:title", content: "SKU Pricing — Novo Pharma Ops" },
+      {
+        property: "og:description",
+        content: "Buyer prices, suggested prices, overrides and full price history per SKU.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface PriceHistoryRow {
+  id?: string | number | null;
+  np_sku_id: string | null;
+  buyer_id: string | null;
+  supplier_id: string | null;
+  unit_price: number | null;
+  sold_price: number | null;
+  offered_price: number | null;
+  commission_pct: number | null;
+  cycle_ref: string | null;
+  recorded_at: string | null;
+  source: string | null;
+}
+
+interface SuggestionRow {
+  np_sku_id: string | null;
+  buyer_id: string | null;
+  final_price: number | null;
+  suggested_price: number | null;
+  margin_pct: number | null;
+}
+
+interface OverrideRow {
+  id?: string | number | null;
+  np_sku_id: string | null;
+  buyer_id: string | null;
+  unit_price: number | null;
+  commission_pct: number | null;
+  valid_from: string | null;
+  valid_to: string | null;
+}
+
+interface FloorConflict {
+  buyer_id?: string | null;
+  buyer_name?: string | null;
+  unit_price?: number | null;
+  price?: number | null;
+  valid_from?: string | null;
+}
+
+const HISTORY_COLUMNS =
+  "id, np_sku_id, buyer_id, supplier_id, unit_price, sold_price, offered_price, commission_pct, cycle_ref, recorded_at, source";
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function yesterdayISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("hr-HR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function laterOf(a: string | null | undefined, b: string | null | undefined) {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
+// ---------------------------------------------------------------------------
+// Data hooks
+// ---------------------------------------------------------------------------
+
+function usePriceHistory(npSkuId: string | null) {
+  return useQuery({
+    queryKey: ["price-history", npSkuId],
+    enabled: !!npSkuId,
+    queryFn: async (): Promise<PriceHistoryRow[]> => {
+      const { data, error } = await (supabase as any)
+        .from("price_history")
+        .select(HISTORY_COLUMNS)
+        .eq("np_sku_id", npSkuId)
+        .order("recorded_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as PriceHistoryRow[];
+    },
+  });
+}
+
+function usePriceSuggestions(npSkuId: string | null) {
+  return useQuery({
+    queryKey: ["price-suggestions", npSkuId],
+    enabled: !!npSkuId,
+    queryFn: async (): Promise<SuggestionRow[]> => {
+      const { data, error } = await (supabase as any)
+        .from("price_suggestions")
+        .select("np_sku_id, buyer_id, final_price, suggested_price, margin_pct")
+        .eq("np_sku_id", npSkuId)
+        .limit(1000);
+      if (error) throw error;
+      return (data ?? []) as SuggestionRow[];
+    },
+  });
+}
+
+function useActiveOverrides(npSkuId: string | null) {
+  return useQuery({
+    queryKey: ["price-overrides-buyer", npSkuId],
+    enabled: !!npSkuId,
+    queryFn: async (): Promise<OverrideRow[]> => {
+      const today = todayISO();
+      const { data, error } = await (supabase as any)
+        .from("price_overrides_buyer")
+        .select("id, np_sku_id, buyer_id, unit_price, commission_pct, valid_from, valid_to")
+        .eq("np_sku_id", npSkuId)
+        .lte("valid_from", today)
+        .or(`valid_to.is.null,valid_to.gte.${today}`)
+        .order("valid_from", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return (data ?? []) as OverrideRow[];
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+function PricesPage() {
+  const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null);
+  const skus = useNpSkuList();
+  const selectedSku: NpSkuDetails | null =
+    skus.data?.find((s) => s.np_sku_id === selectedSkuId) ?? null;
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <header className="border-b px-6 py-4">
+        <h1 className="text-lg font-semibold tracking-tight">Prices</h1>
+        <p className="mt-1 text-xs text-muted-foreground">
+          SKU-level buyer pricing, active overrides and full price history.
+        </p>
+      </header>
+
+      <div className="space-y-6 p-6">
+        <div className="max-w-xl space-y-1.5">
+          <Label className="text-xs text-muted-foreground">SKU</Label>
+          <SkuCombobox
+            skus={skus.data ?? []}
+            loading={skus.isLoading}
+            value={selectedSkuId}
+            onChange={setSelectedSkuId}
+            placeholder="Search for a SKU…"
+          />
+        </div>
+
+        {!selectedSkuId ? (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+              <Search className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Search for a SKU to view and manage its pricing.
+            </p>
+          </div>
+        ) : (
+          <>
+            <SkuHeader sku={selectedSku} skuId={selectedSkuId} />
+            <BuyerPricesSection npSkuId={selectedSkuId} />
+            <PriceHistorySection npSkuId={selectedSkuId} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SkuHeader({ sku, skuId }: { sku: NpSkuDetails | null; skuId: string }) {
+  const code = useQuery({
+    queryKey: ["sku-materijal-code", skuId],
+    queryFn: async (): Promise<string | null> => {
+      const direct = await (supabase as any)
+        .from("np_sku")
+        .select("materijal_code")
+        .eq("np_sku_id", skuId)
+        .maybeSingle();
+      if (!direct.error && direct.data) return direct.data.materijal_code ?? null;
+      const { data } = await (supabase as any)
+        .from("np_catalog_reference")
+        .select("materijal_code")
+        .eq("promoted_to_sku_id", skuId)
+        .limit(1);
+      return (data ?? [])[0]?.materijal_code ?? null;
+    },
+  });
+
+  return (
+    <div className="rounded-lg border bg-card px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-semibold">
+          {sku?.pack_description ?? sku?.brand ?? sku?.inn ?? "Unknown product"}
+        </span>
+        {code.data ? (
+          <Badge variant="outline" className="font-mono text-[10px]">
+            {code.data}
+          </Badge>
+        ) : null}
+        <Badge variant="secondary" className="font-mono text-[10px]">
+          {skuId}
+        </Badge>
+      </div>
+      {sku?.brand || sku?.inn ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {[sku?.brand, sku?.inn].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section A — Buyer Prices
+// ---------------------------------------------------------------------------
+
+function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
+  const buyers = usePartners({ buyersOnly: true });
+  const history = usePriceHistory(npSkuId);
+  const suggestions = usePriceSuggestions(npSkuId);
+  const overrides = useActiveOverrides(npSkuId);
+
+  const loading =
+    buyers.isLoading || history.isLoading || suggestions.isLoading || overrides.isLoading;
+  const error =
+    buyers.error ?? history.error ?? suggestions.error ?? overrides.error ?? null;
+
+  const latestHistoryByBuyer = useMemo(() => {
+    const map: Record<string, PriceHistoryRow> = {};
+    for (const row of history.data ?? []) {
+      if (!row.buyer_id) continue;
+      const existing = map[row.buyer_id];
+      if (
+        !existing ||
+        new Date(row.recorded_at ?? 0).getTime() >
+          new Date(existing.recorded_at ?? 0).getTime()
+      ) {
+        map[row.buyer_id] = row;
+      }
+    }
+    return map;
+  }, [history.data]);
+
+  const suggestionByBuyer = useMemo(() => {
+    const map: Record<string, SuggestionRow> = {};
+    for (const row of suggestions.data ?? []) {
+      if (row.buyer_id) map[row.buyer_id] = row;
+    }
+    return map;
+  }, [suggestions.data]);
+
+  const overrideByBuyer = useMemo(() => {
+    const map: Record<string, OverrideRow> = {};
+    for (const row of overrides.data ?? []) {
+      if (row.buyer_id && !map[row.buyer_id]) map[row.buyer_id] = row;
+    }
+    return map;
+  }, [overrides.data]);
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold tracking-tight">Buyer Prices</h2>
+
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Buyer</TableHead>
+              <TableHead className="text-right">Last Sold Price</TableHead>
+              <TableHead className="text-right">Suggested Price</TableHead>
+              <TableHead className="text-right">Active Override</TableHead>
+              <TableHead className="text-right">Commission %</TableHead>
+              <TableHead>Last Updated</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 6 }).map((__, j) => (
+                    <TableCell key={j}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-10 text-center">
+                  <div className="flex flex-col items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="h-5 w-5" />
+                    {error instanceof Error ? error.message : "Could not load buyer prices."}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (buyers.data ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                  No buyers found
+                </TableCell>
+              </TableRow>
+            ) : (
+              (buyers.data ?? []).map((buyer) => (
+                <BuyerRow
+                  key={buyer.partner_id}
+                  npSkuId={npSkuId}
+                  buyer={buyer}
+                  history={latestHistoryByBuyer[buyer.partner_id] ?? null}
+                  suggestion={suggestionByBuyer[buyer.partner_id] ?? null}
+                  override={overrideByBuyer[buyer.partner_id] ?? null}
+                  buyerNames={Object.fromEntries(
+                    (buyers.data ?? []).map((b) => [b.partner_id, b.name]),
+                  )}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </section>
+  );
+}
+
+function BuyerRow(props: {
+  npSkuId: string;
+  buyer: Partner;
+  history: PriceHistoryRow | null;
+  suggestion: SuggestionRow | null;
+  override: OverrideRow | null;
+  buyerNames: Record<string, string>;
+}) {
+  const { npSkuId, buyer, history, suggestion, override, buyerNames } = props;
+
+  const suggested =
+    suggestion?.final_price ?? suggestion?.suggested_price ?? null;
+  const lastUpdated = laterOf(history?.recorded_at ?? null, override?.valid_from ?? null);
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="text-sm font-medium">{buyer.name}</div>
+        <div className="font-mono text-[10px] text-muted-foreground">{buyer.partner_id}</div>
+      </TableCell>
+      <TableCell className="text-right text-sm">
+        {formatMoney(history?.sold_price ?? history?.offered_price ?? null)}
+      </TableCell>
+      <TableCell className="text-right text-sm">
+        {formatMoney(suggested)}
+        {suggestion?.margin_pct != null ? (
+          <div className="text-[10px] text-muted-foreground">
+            margin {formatPercent(suggestion.margin_pct)}
+          </div>
+        ) : null}
+      </TableCell>
+      <TableCell className="text-right">
+        <OverrideEditor
+          npSkuId={npSkuId}
+          buyer={buyer}
+          override={override}
+          buyerNames={buyerNames}
+        />
+      </TableCell>
+      <TableCell className="text-right text-sm">
+        {override?.commission_pct != null
+          ? formatPercent(override.commission_pct)
+          : history?.commission_pct != null
+            ? formatPercent(history.commission_pct)
+            : "—"}
+      </TableCell>
+      <TableCell className="text-xs text-muted-foreground">
+        {formatDate(lastUpdated)}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function OverrideEditor(props: {
+  npSkuId: string;
+  buyer: Partner;
+  override: OverrideRow | null;
+  buyerNames: Record<string, string>;
+}) {
+  const { npSkuId, buyer, override, buyerNames } = props;
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [price, setPrice] = useState("");
+  const [commission, setCommission] = useState("");
+  const [conflicts, setConflicts] = useState<FloorConflict[] | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const reset = () => {
+    setPrice(toInputString(override?.unit_price ?? null));
+    setCommission(toInputString(override?.commission_pct ?? null));
+    setConflicts(null);
+  };
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const unitPrice = parseDecimalInput(price);
+      if (Number.isNaN(unitPrice)) throw new Error("Enter a valid unit price.");
+      const commissionPct = parseDecimalInput(commission);
+
+      if (override) {
+        const { error } = await (supabase as any)
+          .from("price_overrides_buyer")
+          .update({ valid_to: yesterdayISO() })
+          .eq("np_sku_id", npSkuId)
+          .eq("buyer_id", buyer.partner_id)
+          .is("valid_to", null);
+        if (error) throw error;
+        if (override.valid_to) {
+          const { error: e2 } = await (supabase as any)
+            .from("price_overrides_buyer")
+            .update({ valid_to: yesterdayISO() })
+            .eq("np_sku_id", npSkuId)
+            .eq("buyer_id", buyer.partner_id)
+            .gte("valid_to", todayISO());
+          if (e2) throw e2;
+        }
+      }
+
+      const { error: insertError } = await (supabase as any)
+        .from("price_overrides_buyer")
+        .insert({
+          np_sku_id: npSkuId,
+          buyer_id: buyer.partner_id,
+          unit_price: unitPrice,
+          commission_pct: Number.isNaN(commissionPct) ? null : commissionPct,
+          valid_from: todayISO(),
+          valid_to: null,
+        });
+      if (insertError) throw insertError;
+    },
+    onSuccess: () => {
+      toast.success("Price updated");
+      setOpen(false);
+      setConflicts(null);
+      queryClient.invalidateQueries({ queryKey: ["price-overrides-buyer", npSkuId] });
+      queryClient.invalidateQueries({ queryKey: ["price-history", npSkuId] });
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Could not update the price");
+    },
+  });
+
+  const handleFirstSave = async () => {
+    const unitPrice = parseDecimalInput(price);
+    if (Number.isNaN(unitPrice)) {
+      toast.error("Enter a valid unit price.");
+      return;
+    }
+    setChecking(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("check_price_floor", {
+        p_np_sku_id: npSkuId,
+        p_buyer_id: buyer.partner_id,
+        p_proposed_price: unitPrice,
+      });
+      if (error) throw error;
+      const rows = (Array.isArray(data) ? data : data ? [data] : []) as FloorConflict[];
+      if (rows.length > 0) {
+        setConflicts(rows);
+        return;
+      }
+    } catch (e) {
+      // A missing/failing floor check must not block manual pricing.
+      console.warn("check_price_floor failed:", e);
+    } finally {
+      setChecking(false);
+    }
+    save.mutate();
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) reset();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="rounded px-2 py-1 text-right text-sm hover:bg-muted"
+        >
+          {override?.unit_price != null ? (
+            <>
+              <span className="font-medium">{formatMoney(override.unit_price)}</span>
+              <span className="block text-[10px] text-muted-foreground">
+                since {formatDate(override.valid_from)}
+                {override.valid_to ? ` · until ${formatDate(override.valid_to)}` : ""}
+              </span>
+            </>
+          ) : (
+            <span className="text-muted-foreground underline decoration-dotted">
+              Set price
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 space-y-3">
+        <div>
+          <p className="text-sm font-medium">Override for {buyer.name}</p>
+          <p className="text-[11px] text-muted-foreground">
+            A new period starts today; the previous one is closed, not overwritten.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Unit Price (EUR)</Label>
+            <Input
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => {
+                setPrice(e.target.value);
+                setConflicts(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
+              placeholder="0,00"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Commission %</Label>
+            <Input
+              inputMode="decimal"
+              value={commission}
+              onChange={(e) => setCommission(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        {conflicts && conflicts.length > 0 ? (
+          <div className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Price floor warning
+            </div>
+            {conflicts.map((c, i) => {
+              const name =
+                c.buyer_name ?? (c.buyer_id ? buyerNames[c.buyer_id] ?? c.buyer_id : "Another buyer");
+              const p = c.unit_price ?? c.price ?? null;
+              return (
+                <p key={i} className="text-[11px] text-muted-foreground">
+                  {name} currently has a higher active price ({formatMoney(p)}, since{" "}
+                  {formatDate(c.valid_from)}) for this SKU.
+                </p>
+              );
+            })}
+          </div>
+        ) : null}
+
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          {conflicts && conflicts.length > 0 ? (
+            <Button
+              size="sm"
+              className="bg-amber-600 text-white hover:bg-amber-700"
+              disabled={save.isPending}
+              onClick={() => save.mutate()}
+            >
+              {save.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+              Save anyway
+            </Button>
+          ) : (
+            <Button size="sm" disabled={save.isPending || checking} onClick={handleFirstSave}>
+              {save.isPending || checking ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              Save
+            </Button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section B — Price History
+// ---------------------------------------------------------------------------
+
+function PriceHistorySection({ npSkuId }: { npSkuId: string }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [buyerFilter, setBuyerFilter] = useState("all");
+  const history = usePriceHistory(npSkuId);
+  const partners = usePartners();
+
+  const partnerNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of partners.data ?? []) map[p.partner_id] = p.name;
+    return map;
+  }, [partners.data]);
+
+  const rows = useMemo(() => {
+    const all = history.data ?? [];
+    return buyerFilter === "all" ? all : all.filter((r) => r.buyer_id === buyerFilter);
+  }, [history.data, buyerFilter]);
+
+  const buyerOptions = useMemo(() => {
+    const ids = [...new Set((history.data ?? []).map((r) => r.buyer_id).filter(Boolean))] as string[];
+    return ids.map((id) => ({ id, name: partnerNames[id] ?? id }));
+  }, [history.data, partnerNames]);
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-sm font-semibold tracking-tight"
+          onClick={() => setCollapsed((c) => !c)}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+          Price History
+          <Badge variant="secondary" className="ml-1 text-[10px]">
+            {(history.data ?? []).length}
+          </Badge>
+        </button>
+
+        <Select value={buyerFilter} onValueChange={setBuyerFilter}>
+          <SelectTrigger className="h-8 w-[220px] text-xs">
+            <SelectValue placeholder="All buyers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All buyers</SelectItem>
+            {buyerOptions.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {collapsed ? null : (
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Buyer</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Sold Price</TableHead>
+                <TableHead className="text-right">Offered Price</TableHead>
+                <TableHead className="text-right">Commission %</TableHead>
+                <TableHead>Cycle</TableHead>
+                <TableHead>Recorded At</TableHead>
+                <TableHead>Source</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 9 }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : history.isError ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-10 text-center">
+                    <div className="flex flex-col items-center gap-2 text-sm text-destructive">
+                      <AlertCircle className="h-5 w-5" />
+                      {history.error instanceof Error
+                        ? history.error.message
+                        : "Could not load price history."}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                    No price history for this SKU yet
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((r, i) => (
+                  <TableRow key={String(r.id ?? i)}>
+                    <TableCell className="text-sm">
+                      {r.buyer_id ? partnerNames[r.buyer_id] ?? r.buyer_id : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.supplier_id ? partnerNames[r.supplier_id] ?? r.supplier_id : "—"}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">{formatMoney(r.unit_price)}</TableCell>
+                    <TableCell className="text-right text-sm">{formatMoney(r.sold_price)}</TableCell>
+                    <TableCell className="text-right text-sm">{formatMoney(r.offered_price)}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {r.commission_pct != null ? formatNumber(r.commission_pct, 2) : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {r.cycle_ref ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {formatDate(r.recorded_at)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {r.source ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          {r.source}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </section>
+  );
+}
