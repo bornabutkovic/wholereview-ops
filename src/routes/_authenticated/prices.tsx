@@ -484,9 +484,9 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
                   key={buyer.partner_id}
                   npSkuId={npSkuId}
                   buyer={buyer}
-                  history={latestHistoryByBuyer[buyer.partner_id] ?? null}
-                  suggestion={suggestionByBuyer[buyer.partner_id] ?? null}
-                  override={overrideByBuyer[buyer.partner_id] ?? null}
+                  history={latestHistoryByBuyer[normId(buyer.partner_id)] ?? null}
+                  suggestion={suggestionByBuyer[normId(buyer.partner_id)] ?? null}
+                  override={overrideByBuyer[normId(buyer.partner_id)] ?? null}
                   buyerNames={Object.fromEntries(
                     (buyers.data ?? []).map((b) => [b.partner_id, b.name]),
                   )}
