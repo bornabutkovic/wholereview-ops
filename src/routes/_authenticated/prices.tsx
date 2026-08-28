@@ -528,13 +528,14 @@ function OverrideEditor(props: {
       const unitPrice = parseDecimalInput(price);
       if (Number.isNaN(unitPrice)) throw new Error("Enter a valid unit price.");
       const commissionPct = parseDecimalInput(commission);
+      const buyerCol = await resolveBuyerColumn("price_overrides_buyer");
 
       if (override) {
         const { error } = await (supabase as any)
           .from("price_overrides_buyer")
           .update({ valid_to: yesterdayISO() })
           .eq("np_sku_id", npSkuId)
-          .eq("buyer_id", buyer.partner_id)
+          .eq(buyerCol, buyer.partner_id)
           .is("valid_to", null);
         if (error) throw error;
         if (override.valid_to) {
@@ -542,7 +543,7 @@ function OverrideEditor(props: {
             .from("price_overrides_buyer")
             .update({ valid_to: yesterdayISO() })
             .eq("np_sku_id", npSkuId)
-            .eq("buyer_id", buyer.partner_id)
+            .eq(buyerCol, buyer.partner_id)
             .gte("valid_to", todayISO());
           if (e2) throw e2;
         }
@@ -552,7 +553,7 @@ function OverrideEditor(props: {
         .from("price_overrides_buyer")
         .insert({
           np_sku_id: npSkuId,
-          buyer_id: buyer.partner_id,
+          [buyerCol]: buyer.partner_id,
           unit_price: unitPrice,
           commission_pct: Number.isNaN(commissionPct) ? null : commissionPct,
           valid_from: todayISO(),
@@ -560,6 +561,7 @@ function OverrideEditor(props: {
         });
       if (insertError) throw insertError;
     },
+
     onSuccess: () => {
       toast.success("Price updated");
       setOpen(false);
