@@ -99,19 +99,53 @@ interface FloorConflict {
 
 /**
  * These pricing tables name the buyer column differently across environments
- * (`buyer_id` vs `partner_id`), so every read selects `*` and normalizes here.
- * Selecting an explicit column list was the cause of the hard load errors.
+ * (`buyer_id` vs `buyer_partner_id` vs `partner_id`), so every read selects `*`
+ * and normalizes here. Selecting an explicit column list caused the hard load
+ * errors; a too-narrow key list made every joined cell render empty.
  */
-function pickBuyerId(row: Record<string, unknown>): string | null {
-  const v = row["buyer_id"] ?? row["partner_id"] ?? null;
-  return typeof v === "string" ? v : null;
+const BUYER_KEY_CANDIDATES = [
+  "buyer_id",
+  "buyer_partner_id",
+  "partner_id",
+  "buyer_code",
+  "buyer_ref",
+  "buyer",
+];
+
+/** Ids are compared case/whitespace-insensitively so map keys always match. */
+function normId(value: string | null | undefined): string {
+  return (value ?? "").trim().toUpperCase();
 }
 
-/** Detects whether a pricing table names its buyer column `buyer_id` or `partner_id`. */
+function findBuyerKey(row: Record<string, unknown>): string | null {
+  for (const k of BUYER_KEY_CANDIDATES) {
+    const v = row[k];
+    if (typeof v === "string" && v.trim() !== "") return k;
+  }
+  for (const k of Object.keys(row)) {
+    if (/buyer/i.test(k) && /(_id|_code|_ref)$/i.test(k)) {
+      const v = row[k];
+      if (typeof v === "string" && v.trim() !== "") return k;
+    }
+  }
+  return null;
+}
+
+function pickBuyerId(row: Record<string, unknown>): string | null {
+  const key = findBuyerKey(row);
+  if (!key) return null;
+  const v = row[key];
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+/** Detects the buyer column name of a pricing table from a sample row. */
 async function resolveBuyerColumn(table: string): Promise<string> {
   const { data } = await (supabase as any).from(table).select("*").limit(1);
   const row = (data ?? [])[0] as Record<string, unknown> | undefined;
-  if (row && !("buyer_id" in row) && "partner_id" in row) return "partner_id";
+  if (!row) return "buyer_id";
+  const key = findBuyerKey(row);
+  if (key) return key;
+  for (const k of BUYER_KEY_CANDIDATES) if (k in row) return k;
   return "buyer_id";
 }
 
