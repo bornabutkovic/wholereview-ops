@@ -404,14 +404,15 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
   const latestHistoryByBuyer = useMemo(() => {
     const map: Record<string, PriceHistoryRow> = {};
     for (const row of history.data ?? []) {
-      if (!row.buyer_id) continue;
-      const existing = map[row.buyer_id];
+      const key = normId(row.buyer_id);
+      if (!key) continue;
+      const existing = map[key];
       if (
         !existing ||
         new Date(row.recorded_at ?? 0).getTime() >
           new Date(existing.recorded_at ?? 0).getTime()
       ) {
-        map[row.buyer_id] = row;
+        map[key] = row;
       }
     }
     return map;
@@ -420,7 +421,8 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
   const suggestionByBuyer = useMemo(() => {
     const map: Record<string, SuggestionRow> = {};
     for (const row of suggestions.data ?? []) {
-      if (row.buyer_id) map[row.buyer_id] = row;
+      const key = normId(row.buyer_id);
+      if (key) map[key] = row;
     }
     return map;
   }, [suggestions.data]);
@@ -428,7 +430,8 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
   const overrideByBuyer = useMemo(() => {
     const map: Record<string, OverrideRow> = {};
     for (const row of overrides.data ?? []) {
-      if (row.buyer_id && !map[row.buyer_id]) map[row.buyer_id] = row;
+      const key = normId(row.buyer_id);
+      if (key && !map[key]) map[key] = row;
     }
     return map;
   }, [overrides.data]);
