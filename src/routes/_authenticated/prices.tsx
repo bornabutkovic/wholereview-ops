@@ -876,10 +876,10 @@ function PriceHistorySection({ npSkuId }: { npSkuId: string }) {
                 rows.map((r, i) => (
                   <TableRow key={String(r.id ?? i)}>
                     <TableCell className="text-sm">
-                      {r.buyer_id ? partnerNames[r.buyer_id] ?? r.buyer_id : "—"}
+                      {r.buyer_id ? partnerNames[normId(r.buyer_id)] ?? r.buyer_id : "—"}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {r.supplier_id ? partnerNames[r.supplier_id] ?? r.supplier_id : "—"}
+                      {r.supplier_id ? partnerNames[normId(r.supplier_id)] ?? r.supplier_id : "—"}
                     </TableCell>
                     <TableCell className="text-right text-sm">{formatMoney(r.unit_price)}</TableCell>
                     <TableCell className="text-right text-sm">{formatMoney(r.sold_price)}</TableCell>
