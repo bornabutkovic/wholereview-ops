@@ -97,8 +97,33 @@ interface FloorConflict {
   valid_from?: string | null;
 }
 
-const HISTORY_COLUMNS =
-  "id, np_sku_id, buyer_id, supplier_id, unit_price, sold_price, offered_price, commission_pct, cycle_ref, recorded_at, source";
+/**
+ * These pricing tables name the buyer column differently across environments
+ * (`buyer_id` vs `partner_id`), so every read selects `*` and normalizes here.
+ * Selecting an explicit column list was the cause of the hard load errors.
+ */
+function pickBuyerId(row: Record<string, unknown>): string | null {
+  const v = row["buyer_id"] ?? row["partner_id"] ?? null;
+  return typeof v === "string" ? v : null;
+}
+
+function num(row: Record<string, unknown>, ...keys: string[]): number | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
+  }
+  return null;
+}
+
+function str(row: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return null;
+}
+
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
