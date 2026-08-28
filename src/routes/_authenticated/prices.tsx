@@ -6,7 +6,7 @@ import { AlertCircle, AlertTriangle, ChevronDown, ChevronRight, Loader2, Search,
 
 import { supabase } from "@/lib/supabase";
 import type { NpSkuDetails, Partner } from "@/lib/supabase";
-import { useNpSkuList, usePartners } from "@/lib/product-mapping";
+import { useNpSkuDetails, useNpSkuList, usePartners } from "@/lib/product-mapping";
 import { formatMoney, formatNumber, formatPercent, parseDecimalInput, toInputString } from "@/lib/format";
 import { SkuCombobox } from "@/components/sku-combobox";
 import { Button } from "@/components/ui/button";
@@ -35,13 +35,13 @@ export const Route = createFileRoute("/_authenticated/prices")({
   component: PricesPage,
   head: () => ({
     meta: [
-      { title: "SKU Pricing — Novo Pharma Ops" },
+      { title: "Prices — SKU buyer pricing | Novo Pharma" },
       {
         name: "description",
         content:
           "Manage buyer prices, active overrides and price history for a single SKU.",
       },
-      { property: "og:title", content: "SKU Pricing — Novo Pharma Ops" },
+      { property: "og:title", content: "Prices — SKU buyer pricing | Novo Pharma" },
       {
         property: "og:description",
         content: "Buyer prices, suggested prices, overrides and full price history per SKU.",
@@ -50,6 +50,7 @@ export const Route = createFileRoute("/_authenticated/prices")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+
 });
 
 // ---------------------------------------------------------------------------
@@ -96,8 +97,42 @@ interface FloorConflict {
   valid_from?: string | null;
 }
 
-const HISTORY_COLUMNS =
-  "id, np_sku_id, buyer_id, supplier_id, unit_price, sold_price, offered_price, commission_pct, cycle_ref, recorded_at, source";
+/**
+ * These pricing tables name the buyer column differently across environments
+ * (`buyer_id` vs `partner_id`), so every read selects `*` and normalizes here.
+ * Selecting an explicit column list was the cause of the hard load errors.
+ */
+function pickBuyerId(row: Record<string, unknown>): string | null {
+  const v = row["buyer_id"] ?? row["partner_id"] ?? null;
+  return typeof v === "string" ? v : null;
+}
+
+/** Detects whether a pricing table names its buyer column `buyer_id` or `partner_id`. */
+async function resolveBuyerColumn(table: string): Promise<string> {
+  const { data } = await (supabase as any).from(table).select("*").limit(1);
+  const row = (data ?? [])[0] as Record<string, unknown> | undefined;
+  if (row && !("buyer_id" in row) && "partner_id" in row) return "partner_id";
+  return "buyer_id";
+}
+
+
+function num(row: Record<string, unknown>, ...keys: string[]): number | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
+  }
+  return null;
+}
+
+function str(row: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return null;
+}
+
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -137,12 +172,27 @@ function usePriceHistory(npSkuId: string | null) {
     queryFn: async (): Promise<PriceHistoryRow[]> => {
       const { data, error } = await (supabase as any)
         .from("price_history")
-        .select(HISTORY_COLUMNS)
+        .select("*")
         .eq("np_sku_id", npSkuId)
-        .order("recorded_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data ?? []) as PriceHistoryRow[];
+      const rows = ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        id: (r["id"] as string | number | null) ?? null,
+        np_sku_id: str(r, "np_sku_id"),
+        buyer_id: pickBuyerId(r),
+        supplier_id: str(r, "supplier_id", "supplier_partner_id"),
+        unit_price: num(r, "unit_price", "price"),
+        sold_price: num(r, "sold_price"),
+        offered_price: num(r, "offered_price"),
+        commission_pct: num(r, "commission_pct", "commission"),
+        cycle_ref: str(r, "cycle_ref", "cycle"),
+        recorded_at: str(r, "recorded_at", "created_at"),
+        source: str(r, "source", "source_type"),
+      })) satisfies PriceHistoryRow[];
+      return rows.sort(
+        (a, b) =>
+          new Date(b.recorded_at ?? 0).getTime() - new Date(a.recorded_at ?? 0).getTime(),
+      );
     },
   });
 }
@@ -154,11 +204,17 @@ function usePriceSuggestions(npSkuId: string | null) {
     queryFn: async (): Promise<SuggestionRow[]> => {
       const { data, error } = await (supabase as any)
         .from("price_suggestions")
-        .select("np_sku_id, buyer_id, final_price, suggested_price, margin_pct")
+        .select("*")
         .eq("np_sku_id", npSkuId)
         .limit(1000);
       if (error) throw error;
-      return (data ?? []) as SuggestionRow[];
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        np_sku_id: str(r, "np_sku_id"),
+        buyer_id: pickBuyerId(r),
+        final_price: num(r, "final_price", "override_price"),
+        suggested_price: num(r, "suggested_price"),
+        margin_pct: num(r, "margin_pct"),
+      }));
     },
   });
 }
@@ -171,17 +227,30 @@ function useActiveOverrides(npSkuId: string | null) {
       const today = todayISO();
       const { data, error } = await (supabase as any)
         .from("price_overrides_buyer")
-        .select("id, np_sku_id, buyer_id, unit_price, commission_pct, valid_from, valid_to")
+        .select("*")
         .eq("np_sku_id", npSkuId)
-        .lte("valid_from", today)
-        .or(`valid_to.is.null,valid_to.gte.${today}`)
-        .order("valid_from", { ascending: false })
         .limit(1000);
       if (error) throw error;
-      return (data ?? []) as OverrideRow[];
+      return ((data ?? []) as Record<string, unknown>[])
+        .map((r) => ({
+          id: (r["id"] as string | number | null) ?? null,
+          np_sku_id: str(r, "np_sku_id"),
+          buyer_id: pickBuyerId(r),
+          unit_price: num(r, "unit_price", "price"),
+          commission_pct: num(r, "commission_pct", "commission"),
+          valid_from: str(r, "valid_from"),
+          valid_to: str(r, "valid_to"),
+        }))
+        // Active = valid_from <= today AND (valid_to is null OR valid_to >= today)
+        .filter(
+          (r) =>
+            (!r.valid_from || r.valid_from <= today) && (!r.valid_to || r.valid_to >= today),
+        )
+        .sort((a, b) => (b.valid_from ?? "").localeCompare(a.valid_from ?? ""));
     },
   });
 }
+
 
 // ---------------------------------------------------------------------------
 // Page
@@ -190,8 +259,12 @@ function useActiveOverrides(npSkuId: string | null) {
 function PricesPage() {
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null);
   const skus = useNpSkuList();
-  const selectedSku: NpSkuDetails | null =
-    skus.data?.find((s) => s.np_sku_id === selectedSkuId) ?? null;
+  // The seed list is capped, so the selected SKU is usually not in it — fall
+  // back to a direct lookup so brand / pack description always resolve.
+  const seeded = skus.data?.find((s) => s.np_sku_id === selectedSkuId) ?? null;
+  const details = useNpSkuDetails(selectedSkuId && !seeded ? selectedSkuId : null);
+  const selectedSku: NpSkuDetails | null = seeded ?? details.data ?? null;
+
 
   return (
     <div className="flex min-h-full flex-col">
@@ -468,13 +541,14 @@ function OverrideEditor(props: {
       const unitPrice = parseDecimalInput(price);
       if (Number.isNaN(unitPrice)) throw new Error("Enter a valid unit price.");
       const commissionPct = parseDecimalInput(commission);
+      const buyerCol = await resolveBuyerColumn("price_overrides_buyer");
 
       if (override) {
         const { error } = await (supabase as any)
           .from("price_overrides_buyer")
           .update({ valid_to: yesterdayISO() })
           .eq("np_sku_id", npSkuId)
-          .eq("buyer_id", buyer.partner_id)
+          .eq(buyerCol, buyer.partner_id)
           .is("valid_to", null);
         if (error) throw error;
         if (override.valid_to) {
@@ -482,7 +556,7 @@ function OverrideEditor(props: {
             .from("price_overrides_buyer")
             .update({ valid_to: yesterdayISO() })
             .eq("np_sku_id", npSkuId)
-            .eq("buyer_id", buyer.partner_id)
+            .eq(buyerCol, buyer.partner_id)
             .gte("valid_to", todayISO());
           if (e2) throw e2;
         }
@@ -492,7 +566,7 @@ function OverrideEditor(props: {
         .from("price_overrides_buyer")
         .insert({
           np_sku_id: npSkuId,
-          buyer_id: buyer.partner_id,
+          [buyerCol]: buyer.partner_id,
           unit_price: unitPrice,
           commission_pct: Number.isNaN(commissionPct) ? null : commissionPct,
           valid_from: todayISO(),
@@ -500,6 +574,7 @@ function OverrideEditor(props: {
         });
       if (insertError) throw insertError;
     },
+
     onSuccess: () => {
       toast.success("Price updated");
       setOpen(false);

@@ -53,9 +53,9 @@ export function useNpSkuList() {
 }
 
 /**
- * Server-side SKU search over the full np_sku table (52k+ rows).
- * Mirrors the Catalog page pattern: ilike `.or(...)` filters + hard row cap,
- * instead of pre-loading a capped list and filtering it in the browser.
+ * Fuzzy product search backed by the `match_products_fuzzy` Postgres RPC
+ * (pg_trgm GIN index). Matches on brand / INN / pack description and returns
+ * everything SkuCombobox needs in a single round-trip.
  */
 export function useNpSkuSearch(term: string) {
   const q = term.trim();
@@ -63,49 +63,34 @@ export function useNpSkuSearch(term: string) {
     queryKey: ["np-sku-search", q],
     enabled: q.length >= 2,
     queryFn: async (): Promise<NpSkuDetails[]> => {
-      const like = `%${q.replace(/[%,]/g, " ")}%`;
+      const { data, error } = await (supabase as any).rpc("match_products_fuzzy", {
+        query_text: q,
+        match_limit: 20,
+      });
+      if (error) throw error;
 
-      // Brand / INN live on np_product — resolve matching products first.
-      const { data: products, error: pErr } = await supabase
-        .from("np_product")
-        .select("np_product_id")
-        .or([`brand.ilike.${like}`, `inn.ilike.${like}`].join(","))
-        .limit(200);
-      if (pErr) throw pErr;
-      const productIds = (products ?? []).map(
-        (p) => (p as { np_product_id: string }).np_product_id,
-      );
+      const rows = (data ?? []) as Array<{
+        np_sku_id: string;
+        brand: string | null;
+        inn: string | null;
+        pack_description: string | null;
+        similarity_score: number | null;
+      }>;
 
-      const skuFilters = [
-        `np_sku_id.ilike.${like}`,
-        `pack_description.ilike.${like}`,
-        `gtin_ean.ilike.${like}`,
-        `hr_approval_no.ilike.${like}`,
-        `eu_approval_no.ilike.${like}`,
-      ];
-
-      const queries = [
-        supabase.from("np_sku").select(SKU_SELECT).or(skuFilters.join(",")).limit(100),
-      ];
-      if (productIds.length > 0) {
-        queries.push(
-          supabase.from("np_sku").select(SKU_SELECT).in("np_product_id", productIds).limit(100),
-        );
-      }
-
-      const results = await Promise.all(queries);
-      const byId = new Map<string, NpSkuDetails>();
-      for (const res of results) {
-        if (res.error) throw res.error;
-        for (const row of res.data ?? []) {
-          const sku = normalizeSku(row);
-          byId.set(sku.np_sku_id, sku);
-        }
-      }
-      return sortSkus([...byId.values()]);
+      return [...rows]
+        .sort((a, b) => (b.similarity_score ?? 0) - (a.similarity_score ?? 0))
+        .map((r) => ({
+          np_sku_id: r.np_sku_id,
+          pack_description: r.pack_description ?? null,
+          brand: r.brand ?? null,
+          inn: r.inn ?? null,
+          eu_approval_no: null,
+          hr_approval_no: null,
+        }));
     },
   });
 }
+
 
 
 export function usePartners(options?: { buyersOnly?: boolean }) {
