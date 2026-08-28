@@ -6,7 +6,7 @@ import { AlertCircle, AlertTriangle, ChevronDown, ChevronRight, Loader2, Search,
 
 import { supabase } from "@/lib/supabase";
 import type { NpSkuDetails, Partner } from "@/lib/supabase";
-import { useNpSkuList, usePartners } from "@/lib/product-mapping";
+import { useNpSkuDetails, useNpSkuList, usePartners } from "@/lib/product-mapping";
 import { formatMoney, formatNumber, formatPercent, parseDecimalInput, toInputString } from "@/lib/format";
 import { SkuCombobox } from "@/components/sku-combobox";
 import { Button } from "@/components/ui/button";
