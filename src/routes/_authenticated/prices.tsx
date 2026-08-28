@@ -163,12 +163,27 @@ function usePriceHistory(npSkuId: string | null) {
     queryFn: async (): Promise<PriceHistoryRow[]> => {
       const { data, error } = await (supabase as any)
         .from("price_history")
-        .select(HISTORY_COLUMNS)
+        .select("*")
         .eq("np_sku_id", npSkuId)
-        .order("recorded_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data ?? []) as PriceHistoryRow[];
+      const rows = ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        id: (r["id"] as string | number | null) ?? null,
+        np_sku_id: str(r, "np_sku_id"),
+        buyer_id: pickBuyerId(r),
+        supplier_id: str(r, "supplier_id", "supplier_partner_id"),
+        unit_price: num(r, "unit_price", "price"),
+        sold_price: num(r, "sold_price"),
+        offered_price: num(r, "offered_price"),
+        commission_pct: num(r, "commission_pct", "commission"),
+        cycle_ref: str(r, "cycle_ref", "cycle"),
+        recorded_at: str(r, "recorded_at", "created_at"),
+        source: str(r, "source", "source_type"),
+      })) satisfies PriceHistoryRow[];
+      return rows.sort(
+        (a, b) =>
+          new Date(b.recorded_at ?? 0).getTime() - new Date(a.recorded_at ?? 0).getTime(),
+      );
     },
   });
 }
@@ -180,11 +195,17 @@ function usePriceSuggestions(npSkuId: string | null) {
     queryFn: async (): Promise<SuggestionRow[]> => {
       const { data, error } = await (supabase as any)
         .from("price_suggestions")
-        .select("np_sku_id, buyer_id, final_price, suggested_price, margin_pct")
+        .select("*")
         .eq("np_sku_id", npSkuId)
         .limit(1000);
       if (error) throw error;
-      return (data ?? []) as SuggestionRow[];
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        np_sku_id: str(r, "np_sku_id"),
+        buyer_id: pickBuyerId(r),
+        final_price: num(r, "final_price", "override_price"),
+        suggested_price: num(r, "suggested_price"),
+        margin_pct: num(r, "margin_pct"),
+      }));
     },
   });
 }
@@ -197,17 +218,30 @@ function useActiveOverrides(npSkuId: string | null) {
       const today = todayISO();
       const { data, error } = await (supabase as any)
         .from("price_overrides_buyer")
-        .select("id, np_sku_id, buyer_id, unit_price, commission_pct, valid_from, valid_to")
+        .select("*")
         .eq("np_sku_id", npSkuId)
-        .lte("valid_from", today)
-        .or(`valid_to.is.null,valid_to.gte.${today}`)
-        .order("valid_from", { ascending: false })
         .limit(1000);
       if (error) throw error;
-      return (data ?? []) as OverrideRow[];
+      return ((data ?? []) as Record<string, unknown>[])
+        .map((r) => ({
+          id: (r["id"] as string | number | null) ?? null,
+          np_sku_id: str(r, "np_sku_id"),
+          buyer_id: pickBuyerId(r),
+          unit_price: num(r, "unit_price", "price"),
+          commission_pct: num(r, "commission_pct", "commission"),
+          valid_from: str(r, "valid_from"),
+          valid_to: str(r, "valid_to"),
+        }))
+        // Active = valid_from <= today AND (valid_to is null OR valid_to >= today)
+        .filter(
+          (r) =>
+            (!r.valid_from || r.valid_from <= today) && (!r.valid_to || r.valid_to >= today),
+        )
+        .sort((a, b) => (b.valid_from ?? "").localeCompare(a.valid_from ?? ""));
     },
   });
 }
+
 
 // ---------------------------------------------------------------------------
 // Page
