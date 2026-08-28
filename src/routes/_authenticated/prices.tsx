@@ -35,13 +35,13 @@ export const Route = createFileRoute("/_authenticated/prices")({
   component: PricesPage,
   head: () => ({
     meta: [
-      { title: "SKU Pricing — Novo Pharma Ops" },
+      { title: "Prices — SKU buyer pricing | Novo Pharma" },
       {
         name: "description",
         content:
           "Manage buyer prices, active overrides and price history for a single SKU.",
       },
-      { property: "og:title", content: "SKU Pricing — Novo Pharma Ops" },
+      { property: "og:title", content: "Prices — SKU buyer pricing | Novo Pharma" },
       {
         property: "og:description",
         content: "Buyer prices, suggested prices, overrides and full price history per SKU.",
@@ -50,6 +50,7 @@ export const Route = createFileRoute("/_authenticated/prices")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+
 });
 
 // ---------------------------------------------------------------------------
