@@ -107,6 +107,15 @@ function pickBuyerId(row: Record<string, unknown>): string | null {
   return typeof v === "string" ? v : null;
 }
 
+/** Detects whether a pricing table names its buyer column `buyer_id` or `partner_id`. */
+async function resolveBuyerColumn(table: string): Promise<string> {
+  const { data } = await (supabase as any).from(table).select("*").limit(1);
+  const row = (data ?? [])[0] as Record<string, unknown> | undefined;
+  if (row && !("buyer_id" in row) && "partner_id" in row) return "partner_id";
+  return "buyer_id";
+}
+
+
 function num(row: Record<string, unknown>, ...keys: string[]): number | null {
   for (const k of keys) {
     const v = row[k];
