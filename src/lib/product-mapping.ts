@@ -14,7 +14,9 @@ export function useNpSkuDetails(npSkuId: string | null | undefined) {
     queryFn: async (): Promise<NpSkuDetails | null> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, np_product:np_product_id(brand, inn)")
+        .select(
+          "np_sku_id, pack_description, eu_approval_no, hr_approval_no, np_product:np_product_id(brand, inn)",
+        )
         .eq("np_sku_id", npSkuId!)
         .maybeSingle();
       if (error) throw error;
@@ -24,24 +26,87 @@ export function useNpSkuDetails(npSkuId: string | null | undefined) {
   });
 }
 
+const SKU_SELECT =
+  "np_sku_id, pack_description, eu_approval_no, hr_approval_no, np_product:np_product_id(brand, inn)";
+
+function sortSkus(rows: NpSkuDetails[]) {
+  return rows.sort((a, b) => {
+    const aKey = (a.brand ?? a.inn ?? a.np_sku_id).toLowerCase();
+    const bKey = (b.brand ?? b.inn ?? b.np_sku_id).toLowerCase();
+    return aKey.localeCompare(bKey, "hr");
+  });
+}
+
 export function useNpSkuList() {
   return useQuery({
     queryKey: ["np-sku-list"],
     queryFn: async (): Promise<NpSkuDetails[]> => {
       const { data, error } = await supabase
         .from("np_sku")
-        .select("np_sku_id, pack_description, eu_approval_no, hr_approval_no, np_product:np_product_id(brand, inn)")
-        .limit(2000);
+        .select(SKU_SELECT)
+        .order("np_sku_id", { ascending: true })
+        .limit(200);
       if (error) throw error;
-      const rows = (data ?? []).map(normalizeSku);
-      return rows.sort((a, b) => {
-        const aKey = (a.brand ?? a.inn ?? a.np_sku_id).toLowerCase();
-        const bKey = (b.brand ?? b.inn ?? b.np_sku_id).toLowerCase();
-        return aKey.localeCompare(bKey, "hr");
-      });
+      return sortSkus((data ?? []).map(normalizeSku));
     },
   });
 }
+
+/**
+ * Server-side SKU search over the full np_sku table (52k+ rows).
+ * Mirrors the Catalog page pattern: ilike `.or(...)` filters + hard row cap,
+ * instead of pre-loading a capped list and filtering it in the browser.
+ */
+export function useNpSkuSearch(term: string) {
+  const q = term.trim();
+  return useQuery({
+    queryKey: ["np-sku-search", q],
+    enabled: q.length >= 2,
+    queryFn: async (): Promise<NpSkuDetails[]> => {
+      const like = `%${q.replace(/[%,]/g, " ")}%`;
+
+      // Brand / INN live on np_product — resolve matching products first.
+      const { data: products, error: pErr } = await supabase
+        .from("np_product")
+        .select("np_product_id")
+        .or([`brand.ilike.${like}`, `inn.ilike.${like}`].join(","))
+        .limit(200);
+      if (pErr) throw pErr;
+      const productIds = (products ?? []).map(
+        (p) => (p as { np_product_id: string }).np_product_id,
+      );
+
+      const skuFilters = [
+        `np_sku_id.ilike.${like}`,
+        `pack_description.ilike.${like}`,
+        `gtin_ean.ilike.${like}`,
+        `hr_approval_no.ilike.${like}`,
+        `eu_approval_no.ilike.${like}`,
+      ];
+
+      const queries = [
+        supabase.from("np_sku").select(SKU_SELECT).or(skuFilters.join(",")).limit(100),
+      ];
+      if (productIds.length > 0) {
+        queries.push(
+          supabase.from("np_sku").select(SKU_SELECT).in("np_product_id", productIds).limit(100),
+        );
+      }
+
+      const results = await Promise.all(queries);
+      const byId = new Map<string, NpSkuDetails>();
+      for (const res of results) {
+        if (res.error) throw res.error;
+        for (const row of res.data ?? []) {
+          const sku = normalizeSku(row);
+          byId.set(sku.np_sku_id, sku);
+        }
+      }
+      return sortSkus([...byId.values()]);
+    },
+  });
+}
+
 
 export function usePartners(options?: { buyersOnly?: boolean }) {
   const buyersOnly = options?.buyersOnly ?? false;
