@@ -99,19 +99,53 @@ interface FloorConflict {
 
 /**
  * These pricing tables name the buyer column differently across environments
- * (`buyer_id` vs `partner_id`), so every read selects `*` and normalizes here.
- * Selecting an explicit column list was the cause of the hard load errors.
+ * (`buyer_id` vs `buyer_partner_id` vs `partner_id`), so every read selects `*`
+ * and normalizes here. Selecting an explicit column list caused the hard load
+ * errors; a too-narrow key list made every joined cell render empty.
  */
-function pickBuyerId(row: Record<string, unknown>): string | null {
-  const v = row["buyer_id"] ?? row["partner_id"] ?? null;
-  return typeof v === "string" ? v : null;
+const BUYER_KEY_CANDIDATES = [
+  "buyer_id",
+  "buyer_partner_id",
+  "partner_id",
+  "buyer_code",
+  "buyer_ref",
+  "buyer",
+];
+
+/** Ids are compared case/whitespace-insensitively so map keys always match. */
+function normId(value: string | null | undefined): string {
+  return (value ?? "").trim().toUpperCase();
 }
 
-/** Detects whether a pricing table names its buyer column `buyer_id` or `partner_id`. */
+function findBuyerKey(row: Record<string, unknown>): string | null {
+  for (const k of BUYER_KEY_CANDIDATES) {
+    const v = row[k];
+    if (typeof v === "string" && v.trim() !== "") return k;
+  }
+  for (const k of Object.keys(row)) {
+    if (/buyer/i.test(k) && /(_id|_code|_ref)$/i.test(k)) {
+      const v = row[k];
+      if (typeof v === "string" && v.trim() !== "") return k;
+    }
+  }
+  return null;
+}
+
+function pickBuyerId(row: Record<string, unknown>): string | null {
+  const key = findBuyerKey(row);
+  if (!key) return null;
+  const v = row[key];
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+/** Detects the buyer column name of a pricing table from a sample row. */
 async function resolveBuyerColumn(table: string): Promise<string> {
   const { data } = await (supabase as any).from(table).select("*").limit(1);
   const row = (data ?? [])[0] as Record<string, unknown> | undefined;
-  if (row && !("buyer_id" in row) && "partner_id" in row) return "partner_id";
+  if (!row) return "buyer_id";
+  const key = findBuyerKey(row);
+  if (key) return key;
+  for (const k of BUYER_KEY_CANDIDATES) if (k in row) return k;
   return "buyer_id";
 }
 
@@ -241,11 +275,15 @@ function useActiveOverrides(npSkuId: string | null) {
           valid_from: str(r, "valid_from"),
           valid_to: str(r, "valid_to"),
         }))
-        // Active = valid_from <= today AND (valid_to is null OR valid_to >= today)
-        .filter(
-          (r) =>
-            (!r.valid_from || r.valid_from <= today) && (!r.valid_to || r.valid_to >= today),
-        )
+        // Active = valid_from <= today AND (valid_to is null OR valid_to >= today).
+        // valid_from/valid_to may be timestamps, so compare date parts only —
+        // a raw string compare of "2026-08-28T09:00:00Z" <= "2026-08-28" is false
+        // and would silently hide an override created today.
+        .filter((r) => {
+          const from = (r.valid_from ?? "").slice(0, 10);
+          const to = (r.valid_to ?? "").slice(0, 10);
+          return (!from || from <= today) && (!to || to >= today);
+        })
         .sort((a, b) => (b.valid_from ?? "").localeCompare(a.valid_from ?? ""));
     },
   });
@@ -370,14 +408,15 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
   const latestHistoryByBuyer = useMemo(() => {
     const map: Record<string, PriceHistoryRow> = {};
     for (const row of history.data ?? []) {
-      if (!row.buyer_id) continue;
-      const existing = map[row.buyer_id];
+      const key = normId(row.buyer_id);
+      if (!key) continue;
+      const existing = map[key];
       if (
         !existing ||
         new Date(row.recorded_at ?? 0).getTime() >
           new Date(existing.recorded_at ?? 0).getTime()
       ) {
-        map[row.buyer_id] = row;
+        map[key] = row;
       }
     }
     return map;
@@ -386,7 +425,8 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
   const suggestionByBuyer = useMemo(() => {
     const map: Record<string, SuggestionRow> = {};
     for (const row of suggestions.data ?? []) {
-      if (row.buyer_id) map[row.buyer_id] = row;
+      const key = normId(row.buyer_id);
+      if (key) map[key] = row;
     }
     return map;
   }, [suggestions.data]);
@@ -394,7 +434,8 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
   const overrideByBuyer = useMemo(() => {
     const map: Record<string, OverrideRow> = {};
     for (const row of overrides.data ?? []) {
-      if (row.buyer_id && !map[row.buyer_id]) map[row.buyer_id] = row;
+      const key = normId(row.buyer_id);
+      if (key && !map[key]) map[key] = row;
     }
     return map;
   }, [overrides.data]);
@@ -447,9 +488,9 @@ function BuyerPricesSection({ npSkuId }: { npSkuId: string }) {
                   key={buyer.partner_id}
                   npSkuId={npSkuId}
                   buyer={buyer}
-                  history={latestHistoryByBuyer[buyer.partner_id] ?? null}
-                  suggestion={suggestionByBuyer[buyer.partner_id] ?? null}
-                  override={overrideByBuyer[buyer.partner_id] ?? null}
+                  history={latestHistoryByBuyer[normId(buyer.partner_id)] ?? null}
+                  suggestion={suggestionByBuyer[normId(buyer.partner_id)] ?? null}
+                  override={overrideByBuyer[normId(buyer.partner_id)] ?? null}
                   buyerNames={Object.fromEntries(
                     (buyers.data ?? []).map((b) => [b.partner_id, b.name]),
                   )}
@@ -741,18 +782,20 @@ function PriceHistorySection({ npSkuId }: { npSkuId: string }) {
 
   const partnerNames = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of partners.data ?? []) map[p.partner_id] = p.name;
+    for (const p of partners.data ?? []) map[normId(p.partner_id)] = p.name;
     return map;
   }, [partners.data]);
 
   const rows = useMemo(() => {
     const all = history.data ?? [];
-    return buyerFilter === "all" ? all : all.filter((r) => r.buyer_id === buyerFilter);
+    return buyerFilter === "all"
+      ? all
+      : all.filter((r) => normId(r.buyer_id) === normId(buyerFilter));
   }, [history.data, buyerFilter]);
 
   const buyerOptions = useMemo(() => {
     const ids = [...new Set((history.data ?? []).map((r) => r.buyer_id).filter(Boolean))] as string[];
-    return ids.map((id) => ({ id, name: partnerNames[id] ?? id }));
+    return ids.map((id) => ({ id, name: partnerNames[normId(id)] ?? id }));
   }, [history.data, partnerNames]);
 
   return (
@@ -837,10 +880,10 @@ function PriceHistorySection({ npSkuId }: { npSkuId: string }) {
                 rows.map((r, i) => (
                   <TableRow key={String(r.id ?? i)}>
                     <TableCell className="text-sm">
-                      {r.buyer_id ? partnerNames[r.buyer_id] ?? r.buyer_id : "—"}
+                      {r.buyer_id ? partnerNames[normId(r.buyer_id)] ?? r.buyer_id : "—"}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {r.supplier_id ? partnerNames[r.supplier_id] ?? r.supplier_id : "—"}
+                      {r.supplier_id ? partnerNames[normId(r.supplier_id)] ?? r.supplier_id : "—"}
                     </TableCell>
                     <TableCell className="text-right text-sm">{formatMoney(r.unit_price)}</TableCell>
                     <TableCell className="text-right text-sm">{formatMoney(r.sold_price)}</TableCell>
