@@ -259,8 +259,12 @@ function useActiveOverrides(npSkuId: string | null) {
 function PricesPage() {
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null);
   const skus = useNpSkuList();
-  const selectedSku: NpSkuDetails | null =
-    skus.data?.find((s) => s.np_sku_id === selectedSkuId) ?? null;
+  // The seed list is capped, so the selected SKU is usually not in it — fall
+  // back to a direct lookup so brand / pack description always resolve.
+  const seeded = skus.data?.find((s) => s.np_sku_id === selectedSkuId) ?? null;
+  const details = useNpSkuDetails(selectedSkuId && !seeded ? selectedSkuId : null);
+  const selectedSku: NpSkuDetails | null = seeded ?? details.data ?? null;
+
 
   return (
     <div className="flex min-h-full flex-col">
