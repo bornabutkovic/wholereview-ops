@@ -778,18 +778,20 @@ function PriceHistorySection({ npSkuId }: { npSkuId: string }) {
 
   const partnerNames = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of partners.data ?? []) map[p.partner_id] = p.name;
+    for (const p of partners.data ?? []) map[normId(p.partner_id)] = p.name;
     return map;
   }, [partners.data]);
 
   const rows = useMemo(() => {
     const all = history.data ?? [];
-    return buyerFilter === "all" ? all : all.filter((r) => r.buyer_id === buyerFilter);
+    return buyerFilter === "all"
+      ? all
+      : all.filter((r) => normId(r.buyer_id) === normId(buyerFilter));
   }, [history.data, buyerFilter]);
 
   const buyerOptions = useMemo(() => {
     const ids = [...new Set((history.data ?? []).map((r) => r.buyer_id).filter(Boolean))] as string[];
-    return ids.map((id) => ({ id, name: partnerNames[id] ?? id }));
+    return ids.map((id) => ({ id, name: partnerNames[normId(id)] ?? id }));
   }, [history.data, partnerNames]);
 
   return (
